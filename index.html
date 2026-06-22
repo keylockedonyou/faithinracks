@@ -111,9 +111,10 @@ body{background:var(--white);font-family:var(--fb);font-weight:300;min-height:10
 /* ── TOP PAGE SCROLL CONTAINER ── */
 #page-top{justify-content:flex-start;align-items:stretch}
 .top-scroll{
-  width:100%;height:100vh;overflow-y:scroll;
-  scroll-snap-type:y mandatory;
+  width:100%;height:100vh;height:100dvh;overflow-y:auto;
+  scroll-snap-type:y proximity;
   -webkit-overflow-scrolling:touch;
+  scroll-behavior:smooth;
 }
 .top-scroll::-webkit-scrollbar{display:none}
 
@@ -275,7 +276,13 @@ body{background:var(--white);font-family:var(--fb);font-weight:300;min-height:10
 .wish-txt.on{color:#c0392b}
 .wish-txt.on svg{fill:#c0392b}
 .add-cart-btn{width:100%;height:52px;border-radius:var(--r);font-size:10px;font-weight:400;letter-spacing:.55em;text-transform:uppercase;color:var(--black)}
-@media(max-width:800px){.detail-layout{grid-template-columns:1fr;height:auto}.detail-center{height:55vw;max-height:360px}.detail-left,.detail-right{padding:32px 20px}}
+@media(max-width:800px){
+  .detail-layout{grid-template-columns:1fr;height:auto}
+  .detail-center{height:auto;max-height:none}
+  .detail-img{aspect-ratio:4/5}
+  .detail-img img{object-position:top center}
+  .detail-left,.detail-right{padding:32px 20px}
+}
 
 /* ── CART ── */
 #page-cart{padding:0;justify-content:flex-start;align-items:center}
