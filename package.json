@@ -1,0 +1,9 @@
+{
+  "name": "maison-veil",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "stripe": "^16.12.0"
+  }
+}

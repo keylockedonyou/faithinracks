@@ -139,7 +139,7 @@ body{background:var(--white);font-family:var(--fb);font-weight:300;min-height:10
 .hero::before{
   content:'';
   position:absolute;inset:0;
-  background:linear-gradient(to bottom, rgba(0,0,0,.35) 0%, rgba(0,0,0,.55) 100%);
+  background:linear-gradient(to bottom, rgba(0,0,0,.4) 0%, rgba(0,0,0,.32) 38%, rgba(0,0,0,.48) 65%, rgba(0,0,0,.62) 100%);
   z-index:0;
 }
 .hero-logo{
@@ -147,12 +147,14 @@ body{background:var(--white);font-family:var(--fb);font-weight:300;min-height:10
   font-size:clamp(52px,9vw,110px);
   letter-spacing:.25em;color:#fff;
   text-align:center;
-  opacity:0 !important;
+  opacity:1;
+  transition:opacity .35s ease;
   transform-origin:center center;
   position:relative;z-index:1;
   display:flex;justify-content:center;
 }
-.hero-logo img{width:clamp(220px,32vw,420px);height:auto;display:block;}
+.hero-logo img{width:clamp(220px,32vw,420px);height:auto;display:block;
+  filter:drop-shadow(0 2px 6px rgba(0,0,0,.85)) drop-shadow(0 0 22px rgba(0,0,0,.7)) drop-shadow(0 0 40px rgba(0,0,0,.5));}
 .hero-clock{font-size:11px;font-weight:300;letter-spacing:.35em;color:#fff;margin-top:10px;text-align:center;opacity:0;animation:fadeUp 1.2s cubic-bezier(.22,1,.36,1) .25s forwards;position:relative;z-index:1}
 .hero-tagline{font-size:9px;letter-spacing:.6em;text-transform:uppercase;color:rgba(255,255,255,.7);margin-top:7px;text-align:center;opacity:0;animation:fadeUp 1.2s cubic-bezier(.22,1,.36,1) .4s forwards;position:relative;z-index:1}
 .hero-social{
@@ -346,6 +348,7 @@ body{background:var(--white);font-family:var(--fb);font-weight:300;min-height:10
 .co-pay-icon{font-size:16px;opacity:.4}
 .co-card-fields{display:none;flex-direction:column;gap:12px;margin-top:4px;padding-top:16px;border-top:.5px solid rgba(0,0,0,.06)}
 .co-card-fields.on{display:flex}
+.co-card-fields{display:none!important}
 .co-summary{position:sticky;top:88px}
 .co-sum-card{border-radius:20px;padding:26px}
 .co-sum-ttl{font-size:10px;letter-spacing:.5em;text-transform:uppercase;color:var(--black);margin-bottom:18px}
@@ -803,6 +806,7 @@ select option{color:var(--black)}
               </div>
               <div class="field" style="margin-bottom:0"><label>Name on Card</label><input type="text" id="co-card-name" placeholder="As shown on card"></div>
             </div>
+            <div class="cart-note" id="co-card-stripe-note" style="margin-bottom:14px">💳 カード情報は次の画面（Stripeの安全な決済ページ）で入力します。</div>
             <div class="co-field-err" id="co-err">Please fill in all required fields.</div>
           </div>
         </div>
@@ -1077,9 +1081,7 @@ const PRODS = [
 let cart=[], wishlist=[], currentPid=null, prevPage='page-top';
 const USERS={};
 let currentUser=null;
-let _fly, _navLogo, _shopNow, _topScroll, _heroLogo;
-let flyReady=false, hPos=null, nPos=null;
-let _navLogoBlackSrc, _navLogoWhiteSrc;
+let _navLogo, _shopNow, _topScroll, _heroLogo;
 
 document.addEventListener('DOMContentLoaded', function(){
   // Debug: report any missing critical elements to console
@@ -1092,44 +1094,15 @@ document.addEventListener('DOMContentLoaded', function(){
   _topScroll = document.getElementById('top-scroll');
   _heroLogo  = document.getElementById('hero-logo');
 
-  const _navLogoImgEl  = _navLogo  ? _navLogo.querySelector('img')  : null;
-  const _heroLogoImgEl = _heroLogo ? _heroLogo.querySelector('img') : null;
-  _navLogoBlackSrc = _navLogoImgEl  ? _navLogoImgEl.src  : '';
-  _navLogoWhiteSrc = _heroLogoImgEl ? _heroLogoImgEl.src : '';
-
   const navbarInit = document.querySelector('.navbar');
   if(navbarInit) navbarInit.classList.add('transparent-bg');
-
-  // fly logo (image version: white image fades to black image while flying)
-  _fly = document.createElement('div');
-  _fly.id = 'fly-logo';
-  Object.assign(_fly.style,{position:'fixed',pointerEvents:'none',zIndex:'150',
-    whiteSpace:'nowrap',opacity:'0'});
-  const _flyInner = document.createElement('div');
-  Object.assign(_flyInner.style,{position:'relative',width:'100%',height:'auto',display:'block'});
-  _fly.appendChild(_flyInner);
-  const _flyWhite = document.createElement('img');
-  _flyWhite.src = _navLogoWhiteSrc;
-  _flyWhite.alt = 'Maison Veil';
-  Object.assign(_flyWhite.style,{display:'block',width:'100%',height:'auto'});
-  const _flyBlack = document.createElement('img');
-  _flyBlack.src = _navLogoBlackSrc;
-  _flyBlack.alt = 'Maison Veil';
-  Object.assign(_flyBlack.style,{display:'block',width:'100%',height:'auto',
-    position:'absolute',top:'0',left:'0',opacity:'0',transition:'none'});
-  _flyInner.appendChild(_flyWhite);
-  _flyInner.appendChild(_flyBlack);
-  _fly._imgWhite = _flyWhite;
-  _fly._imgBlack = _flyBlack;
-  document.body.appendChild(_fly);
 
   // clock
   const WD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   renderShopInto('hero-shop-grid','all');
   if(_navLogo) _navLogo.style.opacity='0';
-  if(document.fonts) document.fonts.ready.then(initFly); else window.addEventListener('load',initFly);
   if(_topScroll) _topScroll.addEventListener('scroll',onTopScroll,{passive:true});
-  if(_shopNow) _shopNow.onclick=()=>{ const h=document.getElementById('hero').offsetHeight; if(_topScroll) _topScroll.scrollTo({top:h,behavior:'smooth'}); };
+  if(_shopNow) _shopNow.onclick=()=>{ _shopNow.classList.add('hide'); const h=document.getElementById('hero').offsetHeight; if(_topScroll) _topScroll.scrollTo({top:h,behavior:'smooth'}); };
   bindAll();
   updateAuthUI();
 });
@@ -1153,29 +1126,16 @@ function go(id,from){
   if(from) prevPage=from;
   const navbarEl = document.querySelector('.navbar');
   if(id!=='page-top'){
-    if(_fly){_fly.style.transition='opacity .3s ease';_fly.style.opacity='0';}
     if(_navLogo) _navLogo.style.opacity='1';
     if(_shopNow) _shopNow.classList.add('hide');
     if(navbarEl) navbarEl.classList.remove('transparent-bg');
   } else {
     if(navbarEl) navbarEl.classList.add('transparent-bg');
-    // Returning to the top page: reset and replay the hero-logo fly animation
-    // so the navbar logo doesn't end up stuck invisible/misplaced.
     if(_topScroll) _topScroll.scrollTop=0;
     if(_shopNow){_shopNow.classList.remove('hide');_shopNow.style.opacity='1';}
-    flyReady=false;
     if(_navLogo) _navLogo.style.opacity='0';
-    if(_fly){_fly.style.transition='none';_fly.style.opacity='0';}
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      measureAll(); setFly(0);
-      if(_fly){
-        _fly.style.transition='opacity .5s ease';
-        requestAnimationFrame(()=>{
-          _fly.style.opacity='1';
-          setTimeout(()=>{if(_fly)_fly.style.transition='none';flyReady=true;},550);
-        });
-      }
-    }));
+    if(_heroLogo) _heroLogo.style.opacity='1';
+    onTopScroll();
   }
   if(id==='page-shop'){
     const f=document.querySelector('.filter-btn.active')?.dataset.filter||'all';
@@ -1184,28 +1144,8 @@ function go(id,from){
 }
 
 function goHome(){
-  closeMobileMenu();
-  document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden'));
-  document.getElementById('page-top').classList.remove('hidden');
-  prevPage='page-top';
+  go('page-top', getCurrentPage());
   renderShopInto('hero-shop-grid',document.querySelector('.filter-btn.active')?.dataset.filter||'all');
-  if(_topScroll) _topScroll.scrollTop=0;
-  if(_shopNow){_shopNow.classList.remove('hide');_shopNow.style.opacity='1';}
-  flyReady=false;
-  if(_navLogo) _navLogo.style.opacity='0';
-  if(_fly){_fly.style.transition='none';_fly.style.opacity='0';}
-  const navbarEl = document.querySelector('.navbar');
-  if(navbarEl) navbarEl.classList.add('transparent-bg');
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{
-    measureAll(); setFly(0);
-    if(_fly){
-      _fly.style.transition='opacity .5s ease';
-      requestAnimationFrame(()=>{
-        _fly.style.opacity='1';
-        setTimeout(()=>{if(_fly)_fly.style.transition='none';flyReady=true;},550);
-      });
-    }
-  }));
 }
 
 function getCurrentPage(){
@@ -1213,44 +1153,12 @@ function getCurrentPage(){
   return v?v.id:'page-top';
 }
 
-// ── FLY LOGO ──
-function measureAll(){
-  if(!_heroLogo||!_navLogo) return;
-  const hr=_heroLogo.getBoundingClientRect();
-  const heroImgEl=_heroLogo.querySelector('img');
-  const heroW=heroImgEl?heroImgEl.getBoundingClientRect().width:hr.width;
-  hPos={x:hr.left+hr.width/2,y:hr.top+hr.height/2,fs:heroW};
-  _navLogo.style.opacity='1';_navLogo.style.visibility='visible';
-  const nr=_navLogo.getBoundingClientRect();
-  const navImgEl=_navLogo.querySelector('img');
-  const navW=navImgEl?navImgEl.getBoundingClientRect().width:nr.width;
-  _navLogo.style.opacity='0';_navLogo.style.visibility='';
-  nPos={x:nr.left+nr.width/2,y:nr.top+nr.height/2,fs:navW};
-}
-function setFly(p){
-  if(!hPos||!nPos||!_fly) return;
-  const t=p<0.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2;
-  _fly.style.left=(hPos.x+(nPos.x-hPos.x)*t)+'px';
-  _fly.style.top=(hPos.y+(nPos.y-hPos.y)*t)+'px';
-  const w=(hPos.fs+(nPos.fs-hPos.fs)*t);
-  _fly.style.width=w+'px';
-  _fly.style.transform='translate(-50%,-50%)';
-  // crossfade from white logo (on photo) to black logo (on white navbar)
-  const colorT = Math.min(p / 0.6, 1);
-  if(_fly._imgWhite) _fly._imgWhite.style.opacity = String(1 - colorT);
-  if(_fly._imgBlack) _fly._imgBlack.style.opacity = String(colorT);
-}
-function initFly(){
-  if(!_fly) return;
-  measureAll(); setFly(0);
-  _fly.style.transition='opacity .5s ease';
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{
-    _fly.style.opacity='1'; flyReady=true;
-    setTimeout(()=>{if(_fly)_fly.style.transition='none';},550);
-  }));
-}
+// ── LOGO CROSSFADE (simplified, robust) ──
+// As the user scrolls past the hero, the hero-logo (white, on photo) fades out
+// and the navbar logo (dark, on navbar) fades in. No dynamically-positioned
+// clone element is used, which avoids z-index/stacking-context bugs entirely.
 function onTopScroll(){
-  if(!flyReady||!_fly||!_navLogo||!_shopNow||!_topScroll) return;
+  if(!_navLogo||!_shopNow||!_topScroll) return;
   const pageTop=document.getElementById('page-top');
   if(!pageTop||pageTop.classList.contains('hidden')) return;
   const scrollY=_topScroll.scrollTop;
@@ -1258,9 +1166,8 @@ function onTopScroll(){
   if(!heroEl) return;
   const heroH=heroEl.offsetHeight;
   const progress=Math.min(Math.max(scrollY/(heroH*0.40),0),1);
-  setFly(progress);
-  if(progress>=0.97){_fly.style.opacity='0';_navLogo.style.opacity='1';}
-  else{_fly.style.opacity='1';_navLogo.style.opacity='0';}
+  if(_heroLogo) _heroLogo.style.opacity=String(1-progress);
+  _navLogo.style.opacity=String(progress);
   _shopNow.classList.toggle('hide',scrollY>heroH*0.18);
   // once scrolled past the hero (into the light shop grid), switch navbar to solid/dark mode for legibility
   const navbarEl=document.querySelector('.navbar');
@@ -1435,13 +1342,9 @@ function validateCheckout(){
     if(!el.value.trim()){el.classList.add('co-err');ok=false;}
     else el.classList.remove('co-err');
   });
-  if(coPayMethod==='card'){
-    ['co-card-num','co-card-exp','co-card-cvc','co-card-name'].forEach(id=>{
-      const el=document.getElementById(id);
-      if(!el.value.trim()){el.classList.add('co-err');ok=false;}
-      else el.classList.remove('co-err');
-    });
-  }
+  // 注: カード番号/有効期限/CVC/カード名義のチェックは行わない。
+  // 実際のカード情報入力はStripeがホストする決済ページ(Checkout)で行うため、
+  // このサイト内のカード欄(co-card-num等)は未使用のダミー表示。
   const emailEl=document.getElementById('co-email');
   if(emailEl.value.trim() && !emailEl.value.includes('@')){emailEl.classList.add('co-err');ok=false;}
   return ok;
@@ -1454,39 +1357,41 @@ function genOrderNumber(){
   return `MV-${ymd}-${rand}`;
 }
 
-function placeOrder(){
+async function placeOrder(){
   const err=document.getElementById('co-err');
   if(!validateCheckout()){err.style.display='block';return;}
   err.style.display='none';
 
-  const sub=checkoutSubtotal();
-  const disc=checkoutDiscount(sub);
-  const ship=checkoutShipping(sub-disc);
-  const total=Math.max(0,sub-disc)+ship;
+  const btn=document.getElementById('co-place-order-btn');
+  if(btn){btn.disabled=true;btn.textContent='Redirecting to payment…';}
 
-  const payLabel={card:'Credit / Debit Card',konbini:'Convenience Store Payment',cod:'Cash on Delivery'}[coPayMethod];
-  const addrParts=[
-    document.getElementById('co-zip').value.trim(),
-    document.getElementById('co-pref').value.trim(),
-    document.getElementById('co-city').value.trim(),
-    document.getElementById('co-addr').value.trim()
-  ].filter(Boolean).join(' ');
+  try{
+    // Stripeへ送る商品情報(商品ID・サイズ・数量)。価格はサーバー側マスタで再計算されるため、
+    // ここではIDと数量のみを信頼できる情報として送る。
+    const items=cart.map(c=>({id:c.id,size:c.size,qty:c.qty}));
 
-  lastOrder={
-    orderNum:genOrderNumber(),
-    date:new Date(),
-    email:document.getElementById('co-email').value.trim(),
-    name:document.getElementById('co-name').value.trim(),
-    address:addrParts,
-    payMethod:payLabel,
-    items:cart.map(i=>({...i})),
-    subtotal:sub,discount:disc,shipping:ship,total:total
-  };
+    const res=await fetch('/api/create-checkout-session',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({items})
+    });
 
-  renderOrderConfirm();
-  cart=[];
-  updateCartBadge();
-  go('page-order-confirm',getCurrentPage());
+    if(!res.ok){
+      const data=await res.json().catch(()=>({}));
+      throw new Error(data.error||'決済セッションの作成に失敗しました。');
+    }
+
+    const data=await res.json();
+    if(!data.url) throw new Error('決済ページのURLを取得できませんでした。');
+
+    // Stripeがホストするチェックアウトページへ遷移
+    window.location.href=data.url;
+  }catch(e){
+    console.error('Checkout error:',e);
+    err.textContent=e.message||'決済処理中にエラーが発生しました。時間をおいて再度お試しください。';
+    err.style.display='block';
+    if(btn){btn.disabled=false;btn.textContent='Place Order';}
+  }
 }
 
 function renderOrderConfirm(){
