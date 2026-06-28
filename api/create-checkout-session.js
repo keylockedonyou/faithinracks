@@ -1,6 +1,4 @@
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env.local') });
-console.log('DEBUG: TEST_VAR =', process.env.TEST_VAR);
-console.log('DEBUG: STRIPE_SECRET_KEY exists?', !!process.env.STRIPE_SECRET_KEY, 'length:', (process.env.STRIPE_SECRET_KEY||'').length);
 // /api/create-checkout-session.js
 //
 // Stripe Checkout Session をサーバー側で作成するエンドポイント。
