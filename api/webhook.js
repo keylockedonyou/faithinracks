@@ -75,6 +75,16 @@ module.exports = async (req, res) => {
       console.log('金額(合計):', session.amount_total, session.currency);
       console.log('支払い状況:', session.payment_status);
       console.log('購入者メール:', session.customer_details?.email);
+      console.log('購入者電話番号:', session.customer_details?.phone);
+
+      // 配送先住所(Stripeの決済ページで入力されたもの)
+      const shipping = session.shipping_details || session.customer_details;
+      if (shipping?.address) {
+        console.log('配送先氏名:', shipping.name);
+        console.log('配送先住所:', JSON.stringify(shipping.address));
+      } else {
+        console.log('配送先住所: (取得できませんでした)');
+      }
       console.log('==========================');
 
       // 必要であれば、line_itemsの詳細を取得することもできる(今は省略)

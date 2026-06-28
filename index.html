@@ -764,17 +764,20 @@ select option{color:var(--black)}
         <div class="co-section">
           <div class="co-section-ttl"><span class="co-section-num">2</span>Shipping Address</div>
           <div class="co-card glass">
-            <div class="field"><label>Full Name</label><input type="text" id="co-name" placeholder="Your full name"></div>
-            <div class="field"><label>Address</label><input type="text" id="co-addr" placeholder="Street address, apartment, etc."></div>
-            <div class="co-row2">
-              <div class="field"><label>City</label><input type="text" id="co-city" placeholder="City"></div>
-              <div class="field"><label>Prefecture</label><input type="text" id="co-pref" placeholder="Prefecture"></div>
+            <div class="cart-note" id="co-shipping-stripe-note">📦 配送先住所は次の画面（Stripeの決済ページ）で入力します。</div>
+            <div id="co-shipping-fields" style="display:none">
+              <div class="field"><label>Full Name</label><input type="text" id="co-name" placeholder="Your full name"></div>
+              <div class="field"><label>Address</label><input type="text" id="co-addr" placeholder="Street address, apartment, etc."></div>
+              <div class="co-row2">
+                <div class="field"><label>City</label><input type="text" id="co-city" placeholder="City"></div>
+                <div class="field"><label>Prefecture</label><input type="text" id="co-pref" placeholder="Prefecture"></div>
+              </div>
+              <div class="co-row2">
+                <div class="field"><label>Postal Code</label><input type="text" id="co-zip" placeholder="000-0000"></div>
+                <div class="field"><label>Phone</label><input type="tel" id="co-phone" placeholder="090-0000-0000"></div>
+              </div>
+              <div class="field" style="margin-bottom:0"><label>Country</label><div class="sel-wrap"><select id="co-country"><option>Japan</option><option>United States</option><option>United Kingdom</option><option>Other</option></select></div></div>
             </div>
-            <div class="co-row2">
-              <div class="field"><label>Postal Code</label><input type="text" id="co-zip" placeholder="000-0000"></div>
-              <div class="field"><label>Phone</label><input type="tel" id="co-phone" placeholder="090-0000-0000"></div>
-            </div>
-            <div class="field" style="margin-bottom:0"><label>Country</label><div class="sel-wrap"><select id="co-country"><option>Japan</option><option>United States</option><option>United Kingdom</option><option>Other</option></select></div></div>
           </div>
         </div>
 
@@ -1335,18 +1338,15 @@ function selectPayMethod(method){
 }
 
 function validateCheckout(){
-  const required=['co-email','co-name','co-addr','co-city','co-pref','co-zip','co-phone'];
-  let ok=true;
-  required.forEach(id=>{
-    const el=document.getElementById(id);
-    if(!el.value.trim()){el.classList.add('co-err');ok=false;}
-    else el.classList.remove('co-err');
-  });
-  // 注: カード番号/有効期限/CVC/カード名義のチェックは行わない。
-  // 実際のカード情報入力はStripeがホストする決済ページ(Checkout)で行うため、
-  // このサイト内のカード欄(co-card-num等)は未使用のダミー表示。
+  // 配送先住所(氏名・郵便番号・電話番号等)は、Stripeの決済ページで入力してもらうため、
+  // このサイト内ではチェックしない(co-shipping-fieldsは非表示のダミー表示)。
+  // 注: カード番号/有効期限/CVC/カード名義のチェックも行わない。
+  // 実際のカード情報入力はStripeがホストする決済ページ(Checkout)で行うため。
   const emailEl=document.getElementById('co-email');
-  if(emailEl.value.trim() && !emailEl.value.includes('@')){emailEl.classList.add('co-err');ok=false;}
+  let ok=true;
+  if(!emailEl.value.trim()){emailEl.classList.add('co-err');ok=false;}
+  else if(!emailEl.value.includes('@')){emailEl.classList.add('co-err');ok=false;}
+  else emailEl.classList.remove('co-err');
   return ok;
 }
 
@@ -1369,11 +1369,14 @@ async function placeOrder(){
     // Stripeへ送る商品情報(商品ID・サイズ・数量)。価格はサーバー側マスタで再計算されるため、
     // ここではIDと数量のみを信頼できる情報として送る。
     const items=cart.map(c=>({id:c.id,size:c.size,qty:c.qty}));
+    // メールアドレスは、Stripeの決済ページで再入力させないために事前に渡す。
+    // 配送先住所(氏名・郵便番号等)はStripeの決済ページ側で入力してもらうため、ここでは送らない。
+    const email=document.getElementById('co-email').value.trim();
 
     const res=await fetch('/api/create-checkout-session',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({items})
+      body:JSON.stringify({items,email})
     });
 
     if(!res.ok){
