@@ -1,29 +1,16 @@
 // /api/webhook.js
-//
-// Stripeからの通知(Webhook)を受け取るエンドポイント。
-// 「決済が完了しました」というイベントを、Stripe側からサーバーへPUSHしてもらう仕組み。
-//
-// 【フェーズ1の目的】
-// まずは「通知が正しく届くこと」を確認するため、受け取った注文情報を
-// ログに出力するだけにしています。保存(データベース等)は次のフェーズで追加します。
-//
-// 【重要】このエンドポイントは誰でもアクセスできるURLなので、
-// 本当にStripeから送られたものかを「署名検証」で確認します。
-// この検証には、Stripeダッシュボードで発行する別の鍵(STRIPE_WEBHOOK_SECRET)が必要です。
+
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env.local') });
 
 const Stripe = require('stripe');
+const { neon } = require('@neondatabase/serverless');
 
-// Vercel(Next.js系)のAPI Routesは、デフォルトでリクエストボディを
-// 自動的にJSONへ変換(パース)してしまう。
-// しかしWebhookの署名検証には「パースされる前の生データ」が必須なため、
-// この自動パースを無効化する。
 module.exports.config = {
   api: {
     bodyParser: false,
   },
 };
 
-// リクエストボディを生のBuffer(パース前のバイト列)として読み取るための処理
 function getRawBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -40,61 +27,114 @@ module.exports = async (req, res) => {
   }
 
   try {
-    require('dotenv').config({ path: require('path').join(__dirname, '..', '.env.local') });
-
     const secretKey = process.env.STRIPE_SECRET_KEY;
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    const databaseUrl = process.env.DATABASE_URL;
 
-    if (!secretKey || !webhookSecret) {
-      console.error('STRIPE_SECRET_KEY または STRIPE_WEBHOOK_SECRET が設定されていません');
+    // ★ 追加: DATABASE_URLの接続先をマスクして確認(値そのものは出さない)
+    console.log('[ENV CHECK] STRIPE_SECRET_KEY exists:', !!secretKey);
+    console.log('[ENV CHECK] STRIPE_WEBHOOK_SECRET exists:', !!webhookSecret);
+    console.log('[ENV CHECK] DATABASE_URL exists:', !!databaseUrl);
+    if (databaseUrl) {
+      try {
+        const u = new URL(databaseUrl);
+        console.log('[ENV CHECK] DB host:', u.hostname);
+        console.log('[ENV CHECK] DB name:', u.pathname);
+        console.log('[ENV CHECK] sslmode param:', u.searchParams.get('sslmode'));
+      } catch (e) {
+        console.error('[ENV CHECK] DATABASE_URL parse失敗 → 値が不正な形式:', e.message);
+      }
+    }
+
+    if (!secretKey || !webhookSecret || !databaseUrl) {
+      console.error('必要な環境変数が設定されていません');
       return res.status(500).json({ error: 'サーバー設定エラー' });
     }
 
     const stripe = Stripe(secretKey);
+    const sql = neon(databaseUrl);
     const sig = req.headers['stripe-signature'];
     const rawBody = await getRawBody(req);
 
     let event;
     try {
-      // 署名を検証し、本当にStripeから送られたリクエストかを確認する。
-      // これに通らない場合、改ざんされた/偽のリクエストとして拒否する。
       event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
     } catch (err) {
       console.error('Webhook署名検証エラー:', err.message);
       return res.status(400).json({ error: `Webhook signature verification failed: ${err.message}` });
     }
 
-    // 「決済が完了した」イベントだけを処理する
+    console.log('[EVENT] type:', event.type, 'id:', event.id);
+
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
+      console.log('[SESSION] id:', session.id, 'payment_status:', session.payment_status);
 
-      // 【フェーズ1】まずはログに出力するだけ。
-      // 次のフェーズで、ここをデータベースへの保存処理に置き換える。
-      console.log('=== 注文が完了しました ===');
-      console.log('Session ID:', session.id);
-      console.log('金額(合計):', session.amount_total, session.currency);
-      console.log('支払い状況:', session.payment_status);
-      console.log('購入者メール:', session.customer_details?.email);
-      console.log('購入者電話番号:', session.customer_details?.phone);
+      const shipping = session.shipping_details;
+      const address = shipping?.address || {};
 
-      // 配送先住所(Stripeの決済ページで入力されたもの)
-      const shipping = session.shipping_details || session.customer_details;
-      if (shipping?.address) {
-        console.log('配送先氏名:', shipping.name);
-        console.log('配送先住所:', JSON.stringify(shipping.address));
-      } else {
-        console.log('配送先住所: (取得できませんでした)');
+      const insertParams = {
+        session_id: session.id,
+        email: session.customer_details?.email || null,
+        phone: session.customer_details?.phone || null,
+        shipping_name: shipping?.name || null,
+        shipping_zip: address.postal_code || null,
+        shipping_state: address.state || null,
+        shipping_city: address.city || null,
+        shipping_line1: address.line1 || null,
+        shipping_line2: address.line2 || null,
+        shipping_country: address.country || null,
+        amount_total: session.amount_total || null,
+        currency: session.currency || null,
+        payment_status: session.payment_status || null,
+      };
+
+      // ★ 追加: INSERT直前にパラメータを全出力
+      console.log('[DB] INSERT実行直前のパラメータ:', JSON.stringify(insertParams));
+
+      try {
+        console.log('[DB] INSERT開始...');
+
+        const result = await sql`
+          INSERT INTO orders (
+            session_id, email, phone, shipping_name, shipping_zip,
+            shipping_state, shipping_city, shipping_line1, shipping_line2,
+            shipping_country, amount_total, currency, payment_status
+          ) VALUES (
+            ${insertParams.session_id}, ${insertParams.email}, ${insertParams.phone},
+            ${insertParams.shipping_name}, ${insertParams.shipping_zip}, ${insertParams.shipping_state},
+            ${insertParams.shipping_city}, ${insertParams.shipping_line1}, ${insertParams.shipping_line2},
+            ${insertParams.shipping_country}, ${insertParams.amount_total}, ${insertParams.currency},
+            ${insertParams.payment_status}
+          )
+          ON CONFLICT (session_id) DO NOTHING
+          RETURNING id, session_id
+        `;
+
+        // ★ 追加: RETURNINGで実際にINSERTされた行を確認
+        console.log('[DB] INSERT結果 rows:', JSON.stringify(result));
+        if (!result || result.length === 0) {
+          console.warn('[DB] ⚠️ INSERTは実行されたが0件 → ON CONFLICTで弾かれた(重複)か、対象UNIQUE制約が無い可能性あり');
+        } else {
+          console.log('[DB] ✅ 注文を保存しました:', result[0]);
+        }
+      } catch (dbErr) {
+        // ★ 修正: エラーの中身を全部出す
+        console.error('[DB ERROR] message:', dbErr.message);
+        console.error('[DB ERROR] code:', dbErr.code);
+        console.error('[DB ERROR] detail:', dbErr.detail);
+        console.error('[DB ERROR] table:', dbErr.table);
+        console.error('[DB ERROR] column:', dbErr.column);
+        console.error('[DB ERROR] constraint:', dbErr.constraint);
+        console.error('[DB ERROR] full:', dbErr);
       }
-      console.log('==========================');
-
-      // 必要であれば、line_itemsの詳細を取得することもできる(今は省略)
-      // const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
+    } else {
+      console.log('[EVENT] 対象外のイベントタイプのためスキップ:', event.type);
     }
 
-    // Stripeへ「正常に受信しました」と返す(200を返さないとStripeが再送し続ける)
     return res.status(200).json({ received: true });
   } catch (err) {
-    console.error('Webhook処理エラー:', err);
+    console.error('[FATAL] Webhook処理エラー:', err.message, err.stack);
     return res.status(500).json({ error: 'Webhook処理中にエラーが発生しました' });
   }
 };
