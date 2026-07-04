@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>管理画面 | Maison Veil</title>
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --paper: #fafaf8;
+    --line: #e2e0da;
+    --muted: #8a8579;
+    --accent: #1a1a1a;
+    --danger: #a33;
+    --ok: #3a6b4c;
+    --warn: #b8862f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 20px 80px; }
+
+  /* ログイン画面 */
+  #login-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .login-box {
+    width: 100%;
+    max-width: 320px;
+    padding: 40px 32px;
+    border: 1px solid var(--line);
+    background: #fff;
+  }
+  .login-box h1 {
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 24px;
+    text-align: center;
+  }
+  .login-box input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .login-box button {
+    width: 100%;
+    padding: 12px;
+    background: var(--ink);
+    color: #fff;
+    border: none;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+  }
+  .login-box button:hover { opacity: 0.85; }
+  .login-error { color: var(--danger); font-size: 12px; margin: -4px 0 12px; min-height: 14px; }
+
+  /* ヘッダー */
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+  }
+  header h1 {
+    font-size: 15px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin: 0;
+  }
+  header .logout {
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    background: none;
+    border: none;
+    text-decoration: underline;
+  }
+
+  /* タブ */
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; }
+  .tab {
+    padding: 8px 16px;
+    font-size: 13px;
+    background: none;
+    border: 1px solid var(--line);
+    cursor: pointer;
+    color: var(--muted);
+  }
+  .tab.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  tr:hover td { background: #f5f4f0; }
+
+  .badge { display: inline-block; padding: 2px 8px; font-size: 11px; border: 1px solid var(--line); }
+  .badge.unfulfilled { color: var(--warn); border-color: var(--warn); }
+  .badge.fulfilled { color: var(--ok); border-color: var(--ok); }
+  .badge.cancelled { color: var(--danger); border-color: var(--danger); }
+
+  select, .stock-input {
+    padding: 6px 8px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    font-size: 12px;
+  }
+  .stock-input { width: 70px; }
+
+  .save-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+    background: var(--ink);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    margin-left: 6px;
+  }
+  .save-btn:hover { opacity: 0.85; }
+
+  .items-list { font-size: 12px; color: var(--muted); }
+  .items-list div { margin-bottom: 2px; }
+
+  .empty { padding: 40px; text-align: center; color: var(--muted); font-size: 13px; }
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--ink); color: #fff; padding: 10px 20px; font-size: 13px;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .toast.show { opacity: 1; }
+
+  .low-stock { color: var(--danger); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- ログイン画面 -->
+<div id="login-screen">
+  <div class="login-box">
+    <h1>Maison Veil / 管理画面</h1>
+    <input type="password" id="password-input" placeholder="パスワード" />
+    <div class="login-error" id="login-error"></div>
+    <button id="login-btn">ログイン</button>
+  </div>
+</div>
+
+<!-- 管理画面本体 -->
+<div class="wrap" id="admin-screen" style="display:none;">
+  <header>
+    <h1>Maison Veil 管理画面</h1>
+    <button class="logout" id="logout-btn">ログアウト</button>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="orders">注文一覧</button>
+    <button class="tab" data-tab="products">在庫管理</button>
+  </div>
+
+  <div class="panel active" id="panel-orders">
+    <div id="orders-container" class="empty">読み込み中...</div>
+  </div>
+
+  <div class="panel" id="panel-products">
+    <div id="products-container" class="empty">読み込み中...</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+function showToast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function yen(n) {
+  return n == null ? '-' : `¥${Number(n).toLocaleString('ja-JP')}`;
+}
+
+function fmtDate(iso) {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  return d.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+const STATUS_LABEL = { unfulfilled: '未発送', fulfilled: '発送済み', cancelled: 'キャンセル' };
+
+// ---------- ログイン ----------
+async function tryLogin() {
+  const password = $('#password-input').value;
+  $('#login-error').textContent = '';
+  try {
+    const res = await fetch('/api/admin-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      $('#login-error').textContent = data.error || 'ログインに失敗しました。';
+      return;
+    }
+    showAdminScreen();
+  } catch (err) {
+    $('#login-error').textContent = '通信エラーが発生しました。';
+  }
+}
+
+function showAdminScreen() {
+  $('#login-screen').style.display = 'none';
+  $('#admin-screen').style.display = 'block';
+  loadOrders();
+  loadProducts();
+}
+
+$('#login-btn').addEventListener('click', tryLogin);
+$('#password-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') tryLogin(); });
+
+$('#logout-btn').addEventListener('click', async () => {
+  await fetch('/api/admin-login', { method: 'DELETE' });
+  location.reload();
+});
+
+// ---------- タブ切り替え ----------
+$$('.tab').forEach((tab) => {
+  tab.addEventListener('click', () => {
+    $$('.tab').forEach((t) => t.classList.remove('active'));
+    $$('.panel').forEach((p) => p.classList.remove('active'));
+    tab.classList.add('active');
+    $(`#panel-${tab.dataset.tab}`).classList.add('active');
+  });
+});
+
+// ---------- 注文一覧 ----------
+async function loadOrders() {
+  const container = $('#orders-container');
+  try {
+    const res = await fetch('/api/admin-orders');
+    if (res.status === 401) { location.reload(); return; }
+    const data = await res.json();
+    renderOrders(data.orders || []);
+  } catch (err) {
+    container.textContent = '注文一覧の取得に失敗しました。';
+  }
+}
+
+function renderOrders(orders) {
+  const container = $('#orders-container');
+  if (orders.length === 0) {
+    container.innerHTML = '<div class="empty">まだ注文がありません。</div>';
+    return;
+  }
+
+  const rows = orders.map((o) => {
+    const itemsHtml = (o.items || [])
+      .map((it) => `<div>${it.product_name}${it.size ? ` (${it.size})` : ''} × ${it.quantity}</div>`)
+      .join('') || '<div>-</div>';
+
+    const address = [o.shipping_zip, o.shipping_state, o.shipping_city, o.shipping_line1, o.shipping_line2]
+      .filter(Boolean).join(' ') || '-';
+
+    return `
+      <tr data-order-id="${o.id}">
+        <td>${o.id}</td>
+        <td>${fmtDate(o.created_at)}</td>
+        <td>${o.email || '-'}<br><span style="color:var(--muted)">${o.phone || ''}</span></td>
+        <td>${o.shipping_name || '-'}<br><span style="color:var(--muted)">${address}</span></td>
+        <td class="items-list">${itemsHtml}</td>
+        <td>${yen(o.amount_total)}</td>
+        <td>
+          <select class="status-select">
+            <option value="unfulfilled" ${o.fulfillment_status === 'unfulfilled' ? 'selected' : ''}>未発送</option>
+            <option value="fulfilled" ${o.fulfillment_status === 'fulfilled' ? 'selected' : ''}>発送済み</option>
+            <option value="cancelled" ${o.fulfillment_status === 'cancelled' ? 'selected' : ''}>キャンセル</option>
+          </select>
+          <button class="save-btn status-save-btn">保存</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  $('#orders-container').innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>日時</th><th>連絡先</th><th>配送先</th><th>明細</th><th>金額</th><th>発送状況</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+
+  $$('.status-save-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const tr = btn.closest('tr');
+      const orderId = tr.dataset.orderId;
+      const status = $('.status-select', tr).value;
+      try {
+        const res = await fetch('/api/admin-orders', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_id: Number(orderId), fulfillment_status: status }),
+        });
+        if (!res.ok) throw new Error();
+        showToast(`注文#${orderId} を「${STATUS_LABEL[status]}」に更新しました`);
+      } catch (err) {
+        showToast('更新に失敗しました');
+      }
+    });
+  });
+}
+
+// ---------- 在庫管理 ----------
+async function loadProducts() {
+  const container = $('#products-container');
+  try {
+    const res = await fetch('/api/admin-products');
+    if (res.status === 401) { location.reload(); return; }
+    const data = await res.json();
+    renderProducts(data.products || []);
+  } catch (err) {
+    container.textContent = '商品一覧の取得に失敗しました。';
+  }
+}
+
+function renderProducts(products) {
+  if (products.length === 0) {
+    $('#products-container').innerHTML = '<div class="empty">商品が登録されていません。</div>';
+    return;
+  }
+
+  const rows = products.map((p) => `
+    <tr data-product-id="${p.id}">
+      <td>${p.id}</td>
+      <td>${p.name}</td>
+      <td>${yen(p.price)}</td>
+      <td>
+        <input type="number" class="stock-input" min="0" value="${p.stock}" />
+        <button class="save-btn stock-save-btn">保存</button>
+      </td>
+      <td class="${p.stock <= 5 ? 'low-stock' : ''}">${p.stock <= 5 ? '残りわずか' : ''}</td>
+    </tr>
+  `).join('');
+
+  $('#products-container').innerHTML = `
+    <table>
+      <thead>
+        <tr><th>ID</th><th>商品名</th><th>価格</th><th>在庫数</th><th></th></tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+
+  $$('.stock-save-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const tr = btn.closest('tr');
+      const productId = tr.dataset.productId;
+      const stock = $('.stock-input', tr).value;
+      try {
+        const res = await fetch('/api/admin-products', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ product_id: Number(productId), stock: Number(stock) }),
+        });
+        if (!res.ok) throw new Error();
+        showToast(`在庫を${stock}に更新しました`);
+        loadProducts();
+      } catch (err) {
+        showToast('更新に失敗しました');
+      }
+    });
+  });
+}
+
+// 起動時: すでにログイン済みか確認(Cookieがあればadmin-ordersが200を返す)
+(async function init() {
+  try {
+    const res = await fetch('/api/admin-orders');
+    if (res.ok) {
+      showAdminScreen();
+    }
+  } catch (err) {
+    // ログイン画面のまま
+  }
+})();
+</script>
+</body>
+</html>
