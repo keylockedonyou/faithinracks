@@ -1,4 +1,10 @@
 // /api/webhook.js
+//
+// Stripeからの通知(Webhook)を受け取るエンドポイント。
+// 決済完了時に:
+//   1. ordersテーブルに注文情報を保存
+//   2. order_itemsテーブルに購入明細(何が何個)を保存
+//   3. productsテーブルの在庫数を減算(二重減算・マイナス在庫を防止)
 
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env.local') });
 
@@ -31,21 +37,6 @@ module.exports = async (req, res) => {
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     const databaseUrl = process.env.DATABASE_URL;
 
-    // ★ 追加: DATABASE_URLの接続先をマスクして確認(値そのものは出さない)
-    console.log('[ENV CHECK] STRIPE_SECRET_KEY exists:', !!secretKey);
-    console.log('[ENV CHECK] STRIPE_WEBHOOK_SECRET exists:', !!webhookSecret);
-    console.log('[ENV CHECK] DATABASE_URL exists:', !!databaseUrl);
-    if (databaseUrl) {
-      try {
-        const u = new URL(databaseUrl);
-        console.log('[ENV CHECK] DB host:', u.hostname);
-        console.log('[ENV CHECK] DB name:', u.pathname);
-        console.log('[ENV CHECK] sslmode param:', u.searchParams.get('sslmode'));
-      } catch (e) {
-        console.error('[ENV CHECK] DATABASE_URL parse失敗 → 値が不正な形式:', e.message);
-      }
-    }
-
     if (!secretKey || !webhookSecret || !databaseUrl) {
       console.error('必要な環境変数が設定されていません');
       return res.status(500).json({ error: 'サーバー設定エラー' });
@@ -70,14 +61,9 @@ module.exports = async (req, res) => {
       const session = event.data.object;
       console.log('[SESSION] id:', session.id, 'payment_status:', session.payment_status);
 
-      // StripeのAPIバージョンによって格納場所が異なるため、両方に対応
+      // StripeのAPIバージョンによって配送先情報の格納場所が異なるため両対応
       const shipping = session.collected_information?.shipping_details || session.shipping_details;
       const address = shipping?.address || {};
-
-// デバッグ用: 実際のsessionオブジェクトの中身を確認
-console.log('[DEBUG] session.shipping_details:', JSON.stringify(session.shipping_details));
-console.log('[DEBUG] session.collected_information:', JSON.stringify(session.collected_information));
-console.log('[DEBUG] session.customer_details:', JSON.stringify(session.customer_details));
 
       const insertParams = {
         session_id: session.id,
@@ -95,13 +81,12 @@ console.log('[DEBUG] session.customer_details:', JSON.stringify(session.customer
         payment_status: session.payment_status || null,
       };
 
-      // ★ 追加: INSERT直前にパラメータを全出力
       console.log('[DB] INSERT実行直前のパラメータ:', JSON.stringify(insertParams));
 
       try {
-        console.log('[DB] INSERT開始...');
+        console.log('[DB] orders INSERT開始...');
 
-        const result = await sql`
+        const orderResult = await sql`
           INSERT INTO orders (
             session_id, email, phone, shipping_name, shipping_zip,
             shipping_state, shipping_city, shipping_line1, shipping_line2,
@@ -117,22 +102,77 @@ console.log('[DEBUG] session.customer_details:', JSON.stringify(session.customer
           RETURNING id, session_id
         `;
 
-        // ★ 追加: RETURNINGで実際にINSERTされた行を確認
-        console.log('[DB] INSERT結果 rows:', JSON.stringify(result));
-        if (!result || result.length === 0) {
-          console.warn('[DB] ⚠️ INSERTは実行されたが0件 → ON CONFLICTで弾かれた(重複)か、対象UNIQUE制約が無い可能性あり');
+        console.log('[DB] orders INSERT結果:', JSON.stringify(orderResult));
+
+        if (!orderResult || orderResult.length === 0) {
+          // ON CONFLICTで弾かれた = Stripeの再送などで同じセッションを二重処理しようとした
+          // 在庫の二重減算を防ぐため、ここで処理を止める
+          console.warn('[DB] ⚠️ 既存の注文のため、明細保存・在庫減算はスキップします(重複防止)');
         } else {
-          console.log('[DB] ✅ 注文を保存しました:', result[0]);
+          const orderId = orderResult[0].id;
+          console.log('[DB] ✅ 注文を保存しました。order_id =', orderId);
+
+          // --- 購入明細(カート内容)を復元 ---
+          let cart = [];
+          try {
+            cart = JSON.parse(session.metadata?.cart || '[]');
+          } catch (parseErr) {
+            console.error('[CART PARSE ERROR]', parseErr.message, 'raw:', session.metadata?.cart);
+          }
+          console.log('[CART] 復元したカート内容:', JSON.stringify(cart));
+
+          for (const item of cart) {
+            const productId = Number(item.id);
+            const qty = Number(item.qty);
+
+            if (!Number.isInteger(productId) || !Number.isInteger(qty) || qty < 1) {
+              console.warn('[CART] 不正な明細行をスキップ:', JSON.stringify(item));
+              continue;
+            }
+
+            // 商品名・単価は、今の products テーブルの値を採用(記録用)
+            const productRows = await sql`SELECT id, name, price FROM products WHERE id = ${productId}`;
+            const product = productRows[0];
+
+            if (!product) {
+              console.warn('[CART] products に存在しない商品ID:', productId);
+              continue;
+            }
+
+            // --- 注文明細を保存 ---
+            await sql`
+              INSERT INTO order_items (order_id, product_id, product_name, size, quantity, unit_price)
+              VALUES (${orderId}, ${product.id}, ${product.name}, ${item.size || null}, ${qty}, ${product.price})
+            `;
+            console.log(`[ORDER_ITEMS] 保存: product_id=${product.id} qty=${qty}`);
+
+            // --- 在庫を減算(条件付きUPDATEで二重減算・マイナス在庫を防止) ---
+            const stockResult = await sql`
+              UPDATE products
+              SET stock = stock - ${qty}, updated_at = now()
+              WHERE id = ${productId} AND stock >= ${qty}
+              RETURNING id, stock
+            `;
+
+            if (stockResult.length === 0) {
+              // 在庫が足りない状態で決済が通ってしまったケース(在庫チェックのタイミングのズレ等)
+              // 手動対応が必要なので、warnログで目立たせる
+              console.warn(
+                `[STOCK] ⚠️ 在庫不足のため減算できませんでした。product_id=${productId} qty=${qty} → 手動確認が必要です`
+              );
+            } else {
+              console.log(`[STOCK] ✅ 在庫を減算しました。product_id=${productId} 残り在庫=${stockResult[0].stock}`);
+            }
+          }
         }
       } catch (dbErr) {
-        // ★ 修正: エラーの中身を全部出す
         console.error('[DB ERROR] message:', dbErr.message);
         console.error('[DB ERROR] code:', dbErr.code);
         console.error('[DB ERROR] detail:', dbErr.detail);
         console.error('[DB ERROR] table:', dbErr.table);
         console.error('[DB ERROR] column:', dbErr.column);
         console.error('[DB ERROR] constraint:', dbErr.constraint);
-        console.error('[DB ERROR] full:', dbErr);
+        // DB保存に失敗してもStripeへは200を返す(再送防止)。原因はログで確認する。
       }
     } else {
       console.log('[EVENT] 対象外のイベントタイプのためスキップ:', event.type);
