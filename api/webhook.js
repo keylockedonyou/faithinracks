@@ -70,8 +70,14 @@ module.exports = async (req, res) => {
       const session = event.data.object;
       console.log('[SESSION] id:', session.id, 'payment_status:', session.payment_status);
 
-      const shipping = session.shipping_details;
+      // StripeのAPIバージョンによって格納場所が異なるため、両方に対応
+      const shipping = session.collected_information?.shipping_details || session.shipping_details;
       const address = shipping?.address || {};
+
+// デバッグ用: 実際のsessionオブジェクトの中身を確認
+console.log('[DEBUG] session.shipping_details:', JSON.stringify(session.shipping_details));
+console.log('[DEBUG] session.collected_information:', JSON.stringify(session.collected_information));
+console.log('[DEBUG] session.customer_details:', JSON.stringify(session.customer_details));
 
       const insertParams = {
         session_id: session.id,
