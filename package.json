@@ -1,8 +1,9 @@
 {
-  "name": "maison-veil",
+  "name": "Faith In Racks",
   "version": "1.0.0",
   "private": true,
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
     "dotenv": "^17.4.2",
     "stripe": "^16.12.0"
   }
