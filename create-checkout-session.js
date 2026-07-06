@@ -2,11 +2,10 @@
 //
 // Stripe Checkout Session をサーバー側で作成するエンドポイント。
 // - Stripe Secret Key は環境変数からのみ読み込み、フロントには絶対に渡さない。
-// - 商品名・価格・在庫数は Neon の products テーブルから取得する
-//   (フロントから送られてくる価格はそのまま信用しない改ざん対策)。
-// - 在庫が足りない商品があれば、Checkout Session を作らずエラーを返す。
+// - 商品名・価格は products テーブル、在庫は「商品×サイズ」ごとに
+//   product_variants テーブルから取得する(改ざん対策・サイズ別在庫管理)。
+// - サイズ別在庫が足りない場合、Checkout Session を作らずエラーを返す。
 // - 実際に在庫を減らすのは決済完了(webhook.js)のタイミング。
-//   (ここではまだお金が支払われていないため減らさない)
 
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env.local') });
 
@@ -37,26 +36,26 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'カートが空です。' });
     }
 
-    // --- 商品IDの一覧をDBに問い合わせて、価格・在庫を取得 ---
+    // 商品情報(名前・価格)をまとめて取得
     const ids = items.map((item) => Number(item.id)).filter((id) => Number.isInteger(id));
     if (ids.length === 0) {
       return res.status(400).json({ error: 'カートの内容が不正です。' });
     }
 
     const products = await sql`
-      SELECT id, name, price, stock, is_active
+      SELECT id, name, price, is_active
       FROM products
       WHERE id = ANY(${ids})
     `;
     const productMap = new Map(products.map((p) => [p.id, p]));
 
-    // --- 検証: 商品の存在チェック・数量チェック・在庫チェック ---
     const line_items = [];
     const cartForMetadata = [];
 
     for (const item of items) {
       const product = productMap.get(Number(item.id));
       const qty = Number(item.qty);
+      const size = (item.size || '').trim();
 
       if (!product || !product.is_active) {
         return res.status(400).json({ error: `取り扱いのない商品が含まれています (id: ${item.id})` });
@@ -64,9 +63,23 @@ module.exports = async (req, res) => {
       if (!Number.isInteger(qty) || qty < 1 || qty > 99) {
         return res.status(400).json({ error: '数量が不正です。' });
       }
-      if (product.stock < qty) {
+      if (!size) {
+        return res.status(400).json({ error: `「${product.name}」のサイズを選択してください。` });
+      }
+
+      // サイズ別在庫を確認
+      const variantRows = await sql`
+        SELECT id, stock FROM product_variants
+        WHERE product_id = ${product.id} AND size = ${size}
+      `;
+      const variant = variantRows[0];
+
+      if (!variant) {
+        return res.status(400).json({ error: `「${product.name}」に${size}サイズはありません。` });
+      }
+      if (variant.stock < qty) {
         return res.status(409).json({
-          error: `「${product.name}」の在庫が不足しています(残り${product.stock}点)。`,
+          error: `「${product.name}」(${size})の在庫が不足しています(残り${variant.stock}点)。`,
         });
       }
 
@@ -75,18 +88,19 @@ module.exports = async (req, res) => {
           currency: 'jpy',
           product_data: {
             name: product.name,
-            ...(item.size ? { description: `Size: ${item.size}` } : {}),
+            description: `Size: ${size}`,
           },
           unit_amount: product.price,
         },
         quantity: qty,
       });
 
-      // webhook側で注文明細の保存・在庫減算に使うため、最小限の情報だけ持たせる
+      // webhook側で注文明細の保存・在庫減算に使うため、variant_idを含めて持たせる
       cartForMetadata.push({
-        id: product.id,
+        product_id: product.id,
+        variant_id: variant.id,
+        size,
         qty,
-        size: item.size || null,
       });
     }
 
@@ -105,8 +119,6 @@ module.exports = async (req, res) => {
       phone_number_collection: {
         enabled: true,
       },
-      // 決済完了webhookで「何が何個売れたか」を復元するためのメタデータ
-      // Stripeのmetadata値は1つあたり500文字までのため、コンパクトなJSONにする
       metadata: {
         cart: JSON.stringify(cartForMetadata),
       },

@@ -3,8 +3,8 @@
 // Stripeからの通知(Webhook)を受け取るエンドポイント。
 // 決済完了時に:
 //   1. ordersテーブルに注文情報を保存
-//   2. order_itemsテーブルに購入明細(何が何個)を保存
-//   3. productsテーブルの在庫数を減算(二重減算・マイナス在庫を防止)
+//   2. order_itemsテーブルに購入明細(何を・どのサイズを・いくつ)を保存
+//   3. product_variantsテーブルの「商品×サイズ」在庫を減算(二重減算・マイナス在庫を防止)
 
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env.local') });
 
@@ -61,7 +61,6 @@ module.exports = async (req, res) => {
       const session = event.data.object;
       console.log('[SESSION] id:', session.id, 'payment_status:', session.payment_status);
 
-      // StripeのAPIバージョンによって配送先情報の格納場所が異なるため両対応
       const shipping = session.collected_information?.shipping_details || session.shipping_details;
       const address = shipping?.address || {};
 
@@ -105,8 +104,6 @@ module.exports = async (req, res) => {
         console.log('[DB] orders INSERT結果:', JSON.stringify(orderResult));
 
         if (!orderResult || orderResult.length === 0) {
-          // ON CONFLICTで弾かれた = Stripeの再送などで同じセッションを二重処理しようとした
-          // 在庫の二重減算を防ぐため、ここで処理を止める
           console.warn('[DB] ⚠️ 既存の注文のため、明細保存・在庫減算はスキップします(重複防止)');
         } else {
           const orderId = orderResult[0].id;
@@ -122,15 +119,16 @@ module.exports = async (req, res) => {
           console.log('[CART] 復元したカート内容:', JSON.stringify(cart));
 
           for (const item of cart) {
-            const productId = Number(item.id);
+            const productId = Number(item.product_id);
+            const variantId = Number(item.variant_id);
             const qty = Number(item.qty);
+            const size = item.size || null;
 
-            if (!Number.isInteger(productId) || !Number.isInteger(qty) || qty < 1) {
+            if (!Number.isInteger(productId) || !Number.isInteger(variantId) || !Number.isInteger(qty) || qty < 1) {
               console.warn('[CART] 不正な明細行をスキップ:', JSON.stringify(item));
               continue;
             }
 
-            // 商品名・単価は、今の products テーブルの値を採用(記録用)
             const productRows = await sql`SELECT id, name, price FROM products WHERE id = ${productId}`;
             const product = productRows[0];
 
@@ -141,27 +139,27 @@ module.exports = async (req, res) => {
 
             // --- 注文明細を保存 ---
             await sql`
-              INSERT INTO order_items (order_id, product_id, product_name, size, quantity, unit_price)
-              VALUES (${orderId}, ${product.id}, ${product.name}, ${item.size || null}, ${qty}, ${product.price})
+              INSERT INTO order_items (order_id, product_id, variant_id, product_name, size, quantity, unit_price)
+              VALUES (${orderId}, ${product.id}, ${variantId}, ${product.name}, ${size}, ${qty}, ${product.price})
             `;
-            console.log(`[ORDER_ITEMS] 保存: product_id=${product.id} qty=${qty}`);
+            console.log(`[ORDER_ITEMS] 保存: product_id=${product.id} size=${size} qty=${qty}`);
 
-            // --- 在庫を減算(条件付きUPDATEで二重減算・マイナス在庫を防止) ---
+            // --- サイズ別在庫を減算(条件付きUPDATEで二重減算・マイナス在庫を防止) ---
             const stockResult = await sql`
-              UPDATE products
+              UPDATE product_variants
               SET stock = stock - ${qty}, updated_at = now()
-              WHERE id = ${productId} AND stock >= ${qty}
+              WHERE id = ${variantId} AND stock >= ${qty}
               RETURNING id, stock
             `;
 
             if (stockResult.length === 0) {
-              // 在庫が足りない状態で決済が通ってしまったケース(在庫チェックのタイミングのズレ等)
-              // 手動対応が必要なので、warnログで目立たせる
               console.warn(
-                `[STOCK] ⚠️ 在庫不足のため減算できませんでした。product_id=${productId} qty=${qty} → 手動確認が必要です`
+                `[STOCK] ⚠️ 在庫不足のため減算できませんでした。variant_id=${variantId} (product_id=${productId}, size=${size}) qty=${qty} → 手動確認が必要です`
               );
             } else {
-              console.log(`[STOCK] ✅ 在庫を減算しました。product_id=${productId} 残り在庫=${stockResult[0].stock}`);
+              console.log(
+                `[STOCK] ✅ 在庫を減算しました。variant_id=${variantId} (size=${size}) 残り在庫=${stockResult[0].stock}`
+              );
             }
           }
         }
@@ -172,7 +170,6 @@ module.exports = async (req, res) => {
         console.error('[DB ERROR] table:', dbErr.table);
         console.error('[DB ERROR] column:', dbErr.column);
         console.error('[DB ERROR] constraint:', dbErr.constraint);
-        // DB保存に失敗してもStripeへは200を返す(再送防止)。原因はログで確認する。
       }
     } else {
       console.log('[EVENT] 対象外のイベントタイプのためスキップ:', event.type);
