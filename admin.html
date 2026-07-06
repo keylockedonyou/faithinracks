@@ -334,42 +334,42 @@ function renderOrders(orders) {
   });
 }
 
-// ---------- 在庫管理 ----------
+// ---------- 在庫管理(サイズ別) ----------
 async function loadProducts() {
   const container = $('#products-container');
   try {
     const res = await fetch('/api/admin-products');
     if (res.status === 401) { location.reload(); return; }
     const data = await res.json();
-    renderProducts(data.products || []);
+    renderProducts(data.variants || []);
   } catch (err) {
-    container.textContent = '商品一覧の取得に失敗しました。';
+    container.textContent = '在庫一覧の取得に失敗しました。';
   }
 }
 
-function renderProducts(products) {
-  if (products.length === 0) {
+function renderProducts(variants) {
+  if (variants.length === 0) {
     $('#products-container').innerHTML = '<div class="empty">商品が登録されていません。</div>';
     return;
   }
 
-  const rows = products.map((p) => `
-    <tr data-product-id="${p.id}">
-      <td>${p.id}</td>
-      <td>${p.name}</td>
-      <td>${yen(p.price)}</td>
+  const rows = variants.map((v) => `
+    <tr data-variant-id="${v.variant_id}">
+      <td>${v.product_name}</td>
+      <td>${v.size}</td>
+      <td>${yen(v.price)}</td>
       <td>
-        <input type="number" class="stock-input" min="0" value="${p.stock}" />
+        <input type="number" class="stock-input" min="0" value="${v.stock}" />
         <button class="save-btn stock-save-btn">保存</button>
       </td>
-      <td class="${p.stock <= 5 ? 'low-stock' : ''}">${p.stock <= 5 ? '残りわずか' : ''}</td>
+      <td class="${v.stock <= 5 ? 'low-stock' : ''}">${v.stock <= 5 ? '残りわずか' : ''}</td>
     </tr>
   `).join('');
 
   $('#products-container').innerHTML = `
     <table>
       <thead>
-        <tr><th>ID</th><th>商品名</th><th>価格</th><th>在庫数</th><th></th></tr>
+        <tr><th>商品名</th><th>サイズ</th><th>価格</th><th>在庫数</th><th></th></tr>
       </thead>
       <tbody>${rows}</tbody>
     </table>
@@ -378,13 +378,13 @@ function renderProducts(products) {
   $$('.stock-save-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const tr = btn.closest('tr');
-      const productId = tr.dataset.productId;
+      const variantId = tr.dataset.variantId;
       const stock = $('.stock-input', tr).value;
       try {
         const res = await fetch('/api/admin-products', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ product_id: Number(productId), stock: Number(stock) }),
+          body: JSON.stringify({ variant_id: Number(variantId), stock: Number(stock) }),
         });
         if (!res.ok) throw new Error();
         showToast(`在庫を${stock}に更新しました`);
