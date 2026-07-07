@@ -264,6 +264,15 @@ body{background:var(--white);font-family:var(--fb);font-weight:300;min-height:10
 .dprice{font-size:16px;font-weight:400;letter-spacing:.15em;color:var(--black)}
 .detail-center{display:flex;align-items:stretch}
 .detail-img{width:100%;background:var(--g1);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;box-shadow:4px 0 40px rgba(0,0,0,.05),-4px 0 40px rgba(0,0,0,.03)}
+.detail-nav-btn{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--gbg);border:.5px solid var(--gbr);backdrop-filter:blur(12px);box-shadow:var(--gs);cursor:pointer;transition:box-shadow var(--tr),opacity .25s;z-index:20;opacity:0}
+.detail-img:hover .detail-nav-btn{opacity:1}
+.detail-nav-btn:hover{box-shadow:var(--gsh)}
+.detail-nav-btn svg{width:16px;height:16px;stroke:var(--black);stroke-width:1.6;fill:none}
+.detail-nav-prev{left:16px}
+.detail-nav-next{right:16px}
+.detail-nav-btn.hidden{display:none}
+.detail-img-count{position:absolute;bottom:14px;right:16px;font-size:9px;letter-spacing:.15em;color:var(--white);background:rgba(0,0,0,.4);padding:4px 9px;border-radius:20px;z-index:20}
+@media (max-width:768px){.detail-nav-btn{opacity:1}}
 .detail-thumbs{display:flex;gap:10px;margin-top:14px;justify-content:center;flex-wrap:wrap}
 .detail-thumb{width:56px;height:70px;border-radius:8px;overflow:hidden;cursor:pointer;opacity:.5;border:1.5px solid transparent;transition:opacity .25s,border-color .25s}
 .detail-thumb img{width:100%;height:100%;object-fit:cover;display:block}
@@ -427,15 +436,11 @@ input.co-err{border-color:#c0392b!important}
 
 /* ── ABOUT ── */
 #page-about{padding:0;justify-content:flex-start;align-items:center}
-.ab-inner{width:100%;max-width:620px;padding:48px 5vw 80px}
+.ab-inner{width:100%;max-width:620px;padding:64px 5vw 100px}
 .ab-logo{font-family:var(--fd);font-size:clamp(36px,5vw,72px);letter-spacing:.2em;margin-bottom:6px}
 .ab-tag{font-size:9px;letter-spacing:.6em;text-transform:uppercase;color:var(--g3);margin-bottom:44px}
 .ab-div{width:28px;height:.5px;background:var(--g2);margin-bottom:32px}
-.ab-text{font-size:13px;font-weight:300;letter-spacing:.05em;color:rgba(0,0,0,.48);line-height:2.2;margin-bottom:36px}
-.ab-vals{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:40px}
-.ab-val-num{font-family:var(--fd);font-size:28px;letter-spacing:.1em;color:var(--g2);margin-bottom:3px}
-.ab-val-ttl{font-size:9px;letter-spacing:.45em;text-transform:uppercase;color:var(--black);margin-bottom:5px}
-.ab-val-desc{font-size:11px;font-weight:300;letter-spacing:.04em;color:var(--g3);line-height:1.8}
+.ab-text{font-size:13px;font-weight:300;letter-spacing:.05em;color:rgba(0,0,0,.48);line-height:2.2;margin-bottom:56px}
 .ab-social{display:flex;gap:20px}
 .ab-social a{font-size:8px;letter-spacing:.45em;text-transform:uppercase;color:var(--g3);text-decoration:none;transition:color .3s}
 .ab-social a:hover{color:var(--black)}
@@ -685,6 +690,13 @@ select option{color:var(--black)}
     <div class="detail-center">
       <div class="detail-img">
         <img id="d-img" src="" alt="">
+        <button class="detail-nav-btn detail-nav-prev" id="d-prev" aria-label="Previous photo">
+          <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <button class="detail-nav-btn detail-nav-next" id="d-next" aria-label="Next photo">
+          <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+        <div class="detail-img-count" id="d-img-count"></div>
       </div>
       <div class="detail-thumbs" id="d-thumbs"></div>
     </div>
@@ -916,12 +928,6 @@ select option{color:var(--black)}
     <div class="ab-logo">Faith In Racks</div>
     <div class="ab-div"></div>
     <div class="ab-text"><br>"Faith In Racks"<br>人は皆、何かを信じて生きている。神を信じる者もいれば、運を信じる者もいる。誰かの言葉を信じる者もいる。Faith In Racksは、自分自身と、自分が積み上げてきたものを信じる人間のためのブランド。結果が見えない日も、誰にも理解されない日も、信念だけは手放さない。いつか積み上げたものが証明になると信じて。<br><br>それぞれの作品は、数ヶ月にわたるデザインと試行錯誤を経て生み出されます。私たちはそれぞれの能力を生かし協力し合い、スピードよりも工程を、量よりも品質を重視しています。</div>
-    <div class="ab-vals">
-      <div><div class="ab-val-num">01</div><div class="ab-val-ttl">Materiality</div><div class="ab-val-desc">Natural fibres that age with dignity and develop character over time.</div></div>
-      <div><div class="ab-val-num">02</div><div class="ab-val-ttl">Restraint</div><div class="ab-val-desc">Defined as much by what we omit as what we include.</div></div>
-      <div><div class="ab-val-num">03</div><div class="ab-val-ttl">Craft</div><div class="ab-val-desc">Made in small batches with Japanese artisans. Limited by commitment, not strategy.</div></div>
-      <div><div class="ab-val-num">04</div><div class="ab-val-ttl">Longevity</div><div class="ab-val-desc">We do not follow seasons. Our collection is designed to remain — and relevant is timeless.</div></div>
-    </div>
     <div class="ab-social">
       <a href="https://www.instagram.com" target="_blank" rel="noopener">Instagram</a>
       <a href="https://www.tiktok.com" target="_blank" rel="noopener">TikTok</a>
@@ -1082,9 +1088,9 @@ select option{color:var(--black)}
 // DATA
 // ══════════════════════════════════════════
 const PRODS = [
-  {id:1,cat:'tops',name:'Hear No Evil',price:0,desc:'Oversized cropped tee with a hand-illustrated graphic print. Boxy drop-shoulder fit in heavyweight cotton. Made in Japan.',img:'images/product-1.jpg',images:['images/product-1.jpg','images/product-1b.jpg','images/product-1c.jpg'],url:'https://stores.jp'},
-  {id:2,cat:'tops',name:'Speak No Evil',price:0,desc:'Oversized cropped tee with a hand-illustrated graphic print. Boxy drop-shoulder fit in heavyweight cotton. Made in Japan.',img:'images/product-2.jpg',images:['images/product-2.jpg','images/product-2b.jpg','images/product-2c.jpg'],url:'https://stores.jp'},
-  {id:3,cat:'tops',name:'See No Evil',price:0,desc:'Oversized cropped tee with a hand-illustrated graphic print. Boxy drop-shoulder fit in heavyweight cotton. Made in Japan.',img:'images/product-3.jpg',images:['images/product-3.jpg','images/product-3b.jpg','images/product-3c.jpg'],url:'https://stores.jp'},
+  {id:1,cat:'tops',name:'Hear No Evil',price:9900,desc:'Oversized cropped tee with a hand-illustrated graphic print. Boxy drop-shoulder fit in heavyweight cotton. Made in Japan.',img:'image/IMG_0962.jpeg',images:['image/IMG_0962.jpeg','image/DSC04816.JPG','image/DSC04836.JPG']},
+  {id:2,cat:'tops',name:'Speak No Evil',price:9900,desc:'Oversized cropped tee with a hand-illustrated graphic print. Boxy drop-shoulder fit in heavyweight cotton. Made in Japan.',img:'image/IMG_0958.jpeg',images:['image/IMG_0958.jpeg','image/DSC04836.JPG','images/product-2c.jpg']},
+  {id:3,cat:'tops',name:'See No Evil',price:9900,desc:'Oversized cropped tee with a hand-illustrated graphic print. Boxy drop-shoulder fit in heavyweight cotton. Made in Japan.',img:'image/IMG_0944.jpeg',images:['image/IMG_0944.jpeg','image/DSC04856.JPG','images/product-3c.jpg']},
 ];
 
 let cart=[], wishlist=[], currentPid=null, prevPage='page-top';
@@ -1237,29 +1243,45 @@ function openDetail(id){
   go('page-detail',from);
 }
 
-// ── 商品詳細ページの画像ギャラリー(複数枚対応) ──
+// ── 商品詳細ページの画像ギャラリー(複数枚対応・左右ボタンで切替) ──
+let galleryImages=[],galleryIdx=0;
 function renderGallery(images,name){
+  galleryImages=images;galleryIdx=0;
   const dImg=document.getElementById('d-img');
-  dImg.src=images[0];dImg.alt=name;
+  dImg.alt=name;
 
   const thumbsEl=document.getElementById('d-thumbs');
+  const prevBtn=document.getElementById('d-prev');
+  const nextBtn=document.getElementById('d-next');
+  const countEl=document.getElementById('d-img-count');
+
   if(images.length<=1){
     thumbsEl.innerHTML='';
-    return;
-  }
-  thumbsEl.innerHTML=images.map((src,i)=>`
-    <div class="detail-thumb${i===0?' active':''}" data-idx="${i}">
-      <img src="${src}" alt="${name} ${i+1}">
-    </div>`).join('');
-
-  thumbsEl.querySelectorAll('.detail-thumb').forEach(thumb=>{
-    thumb.addEventListener('click',()=>{
-      const idx=parseInt(thumb.dataset.idx);
-      dImg.src=images[idx];
-      thumbsEl.querySelectorAll('.detail-thumb').forEach(t=>t.classList.remove('active'));
-      thumb.classList.add('active');
+    prevBtn.classList.add('hidden');
+    nextBtn.classList.add('hidden');
+    countEl.textContent='';
+  } else {
+    thumbsEl.innerHTML=images.map((src,i)=>`
+      <div class="detail-thumb${i===0?' active':''}" data-idx="${i}">
+        <img src="${src}" alt="${name} ${i+1}">
+      </div>`).join('');
+    thumbsEl.querySelectorAll('.detail-thumb').forEach(thumb=>{
+      thumb.addEventListener('click',()=>showGalleryImage(parseInt(thumb.dataset.idx)));
     });
-  });
+    prevBtn.classList.remove('hidden');
+    nextBtn.classList.remove('hidden');
+  }
+  showGalleryImage(0);
+}
+function showGalleryImage(idx){
+  if(!galleryImages.length)return;
+  galleryIdx=(idx+galleryImages.length)%galleryImages.length;
+  const dImg=document.getElementById('d-img');
+  dImg.src=galleryImages[galleryIdx];
+  const thumbsEl=document.getElementById('d-thumbs');
+  thumbsEl.querySelectorAll('.detail-thumb').forEach(t=>t.classList.toggle('active',parseInt(t.dataset.idx)===galleryIdx));
+  const countEl=document.getElementById('d-img-count');
+  if(countEl)countEl.textContent=galleryImages.length>1?(galleryIdx+1)+' / '+galleryImages.length:'';
 }
 
 // ── WISHLIST ──
@@ -1491,6 +1513,27 @@ function bindAll(){
   safe(()=>{ ($('nav-wish')||{}).onclick=()=>{renderWishlist();go('page-wishlist',getCurrentPage());}; });
 
   safe(()=>{ document.querySelectorAll('.filter-btn').forEach(btn=>{btn.onclick=()=>{document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderShop(btn.dataset.filter);renderShopInto('hero-shop-grid',btn.dataset.filter);};}); });
+
+  safe(()=>{ ($('d-prev')||{}).onclick=()=>showGalleryImage(galleryIdx-1); });
+  safe(()=>{ ($('d-next')||{}).onclick=()=>showGalleryImage(galleryIdx+1); });
+  safe(()=>{
+    document.addEventListener('keydown',e=>{
+      if(getCurrentPage()!=='page-detail')return;
+      if(e.key==='ArrowLeft')showGalleryImage(galleryIdx-1);
+      if(e.key==='ArrowRight')showGalleryImage(galleryIdx+1);
+    });
+  });
+  safe(()=>{
+    const di=document.querySelector('.detail-img');
+    if(!di)return;
+    let sx=0;
+    di.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;},{passive:true});
+    di.addEventListener('touchend',e=>{
+      const dx=e.changedTouches[0].clientX-sx;
+      if(Math.abs(dx)<40)return;
+      dx>0?showGalleryImage(galleryIdx-1):showGalleryImage(galleryIdx+1);
+    },{passive:true});
+  });
 
   safe(()=>{ ($('btn-back-detail')||{}).onclick=()=>go(prevPage); });
   safe(()=>{ ($('btn-size-guide')||{}).onclick=()=>go('page-sizeguide'); });
