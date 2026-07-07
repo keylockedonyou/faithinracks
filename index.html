@@ -264,6 +264,11 @@ body{background:var(--white);font-family:var(--fb);font-weight:300;min-height:10
 .dprice{font-size:16px;font-weight:400;letter-spacing:.15em;color:var(--black)}
 .detail-center{display:flex;align-items:stretch}
 .detail-img{width:100%;background:var(--g1);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;box-shadow:4px 0 40px rgba(0,0,0,.05),-4px 0 40px rgba(0,0,0,.03)}
+.detail-thumbs{display:flex;gap:10px;margin-top:14px;justify-content:center;flex-wrap:wrap}
+.detail-thumb{width:56px;height:70px;border-radius:8px;overflow:hidden;cursor:pointer;opacity:.5;border:1.5px solid transparent;transition:opacity .25s,border-color .25s}
+.detail-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.detail-thumb:hover{opacity:.85}
+.detail-thumb.active{opacity:1;border-color:var(--black)}
 .detail-img img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block}
 .detail-right{padding:60px 7vw 60px 44px;display:flex;flex-direction:column;justify-content:center;gap:28px}
 .size-lbl{font-size:8px;letter-spacing:.55em;text-transform:uppercase;color:var(--g3);margin-bottom:10px}
@@ -681,6 +686,7 @@ select option{color:var(--black)}
       <div class="detail-img">
         <img id="d-img" src="" alt="">
       </div>
+      <div class="detail-thumbs" id="d-thumbs"></div>
     </div>
     <div class="detail-right">
       <div>
@@ -1076,9 +1082,9 @@ select option{color:var(--black)}
 // DATA
 // ══════════════════════════════════════════
 const PRODS = [
-  {id:1,cat:'tops',name:'Hear No Evil',price:0,desc:'Oversized cropped tee with a hand-illustrated graphic print. Boxy drop-shoulder fit in heavyweight cotton. Made in Japan.',img:'images/product-1.jpg',url:'https://stores.jp'},
-  {id:2,cat:'tops',name:'Speak No Evil',price:0,desc:'Oversized cropped tee with a hand-illustrated graphic print. Boxy drop-shoulder fit in heavyweight cotton. Made in Japan.',img:'images/product-2.jpg',url:'https://stores.jp'},
-  {id:3,cat:'tops',name:'See No Evil',price:0,desc:'Oversized cropped tee with a hand-illustrated graphic print. Boxy drop-shoulder fit in heavyweight cotton. Made in Japan.',img:'images/product-3.jpg',url:'https://stores.jp'},
+  {id:1,cat:'tops',name:'Hear No Evil',price:0,desc:'Oversized cropped tee with a hand-illustrated graphic print. Boxy drop-shoulder fit in heavyweight cotton. Made in Japan.',img:'images/product-1.jpg',images:['images/product-1.jpg','images/product-1b.jpg','images/product-1c.jpg'],url:'https://stores.jp'},
+  {id:2,cat:'tops',name:'Speak No Evil',price:0,desc:'Oversized cropped tee with a hand-illustrated graphic print. Boxy drop-shoulder fit in heavyweight cotton. Made in Japan.',img:'images/product-2.jpg',images:['images/product-2.jpg','images/product-2b.jpg','images/product-2c.jpg'],url:'https://stores.jp'},
+  {id:3,cat:'tops',name:'See No Evil',price:0,desc:'Oversized cropped tee with a hand-illustrated graphic print. Boxy drop-shoulder fit in heavyweight cotton. Made in Japan.',img:'images/product-3.jpg',images:['images/product-3.jpg','images/product-3b.jpg','images/product-3c.jpg'],url:'https://stores.jp'},
 ];
 
 let cart=[], wishlist=[], currentPid=null, prevPage='page-top';
@@ -1220,13 +1226,40 @@ function openDetail(id){
   document.getElementById('d-title').textContent=p.name;
   document.getElementById('d-desc').textContent=p.desc;
   document.getElementById('d-price').textContent=p.price>0?'¥'+p.price.toLocaleString():'¥16,000';
-  const dImg=document.getElementById('d-img');dImg.src=p.img;dImg.alt=p.name;
+  // 複数枚画像に対応: p.images配列があればそれを使い、無ければ従来のp.img1枚だけを使う
+  const gallery=(p.images&&p.images.length?p.images:[p.img]);
+  renderGallery(gallery,p.name);
   document.querySelectorAll('.sz-btn').forEach(b=>b.classList.remove('sel'));
   document.getElementById('add-cart-btn').textContent='Add to Cart';
   updateDetailWish();
   const from=getCurrentPage();
   document.getElementById('btn-back-detail').textContent=from==='page-wishlist'?'← Wishlist':'← Shop';
   go('page-detail',from);
+}
+
+// ── 商品詳細ページの画像ギャラリー(複数枚対応) ──
+function renderGallery(images,name){
+  const dImg=document.getElementById('d-img');
+  dImg.src=images[0];dImg.alt=name;
+
+  const thumbsEl=document.getElementById('d-thumbs');
+  if(images.length<=1){
+    thumbsEl.innerHTML='';
+    return;
+  }
+  thumbsEl.innerHTML=images.map((src,i)=>`
+    <div class="detail-thumb${i===0?' active':''}" data-idx="${i}">
+      <img src="${src}" alt="${name} ${i+1}">
+    </div>`).join('');
+
+  thumbsEl.querySelectorAll('.detail-thumb').forEach(thumb=>{
+    thumb.addEventListener('click',()=>{
+      const idx=parseInt(thumb.dataset.idx);
+      dImg.src=images[idx];
+      thumbsEl.querySelectorAll('.detail-thumb').forEach(t=>t.classList.remove('active'));
+      thumb.classList.add('active');
+    });
+  });
 }
 
 // ── WISHLIST ──
