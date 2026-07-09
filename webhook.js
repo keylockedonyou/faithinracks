@@ -32,6 +32,14 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
+  // ▼ デバッグ用(確認できたら削除): レスポンスに詰める情報をここで管理する
+  const debugInfo = {
+    orderInserted: null,
+    cartRaw: null,
+    dbError: null,
+  };
+  // ▲ デバッグ用ここまで
+
   try {
     const secretKey = process.env.STRIPE_SECRET_KEY;
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -60,6 +68,8 @@ module.exports = async (req, res) => {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
       console.log('[SESSION] id:', session.id, 'payment_status:', session.payment_status);
+
+      debugInfo.cartRaw = session.metadata?.cart || null;
 
       const shipping = session.collected_information?.shipping_details || session.shipping_details;
       const address = shipping?.address || {};
@@ -102,6 +112,7 @@ module.exports = async (req, res) => {
         `;
 
         console.log('[DB] orders INSERT結果:', JSON.stringify(orderResult));
+        debugInfo.orderInserted = !!(orderResult && orderResult.length > 0);
 
         if (!orderResult || orderResult.length === 0) {
           console.warn('[DB] ⚠️ 既存の注文のため、明細保存・在庫減算はスキップします(重複防止)');
@@ -170,15 +181,27 @@ module.exports = async (req, res) => {
         console.error('[DB ERROR] table:', dbErr.table);
         console.error('[DB ERROR] column:', dbErr.column);
         console.error('[DB ERROR] constraint:', dbErr.constraint);
+        // ▼ デバッグ用(確認できたら削除)
+        debugInfo.dbError = {
+          message: dbErr.message,
+          code: dbErr.code,
+          detail: dbErr.detail,
+          table: dbErr.table,
+          column: dbErr.column,
+          constraint: dbErr.constraint,
+        };
+        // ▲ デバッグ用ここまで
       }
     } else {
       console.log('[EVENT] 対象外のイベントタイプのためスキップ:', event.type);
     }
 
+    // ▼ デバッグ用(確認できたら元の `return res.status(200).json({ received: true });` に戻す)
     return res.status(200).json({
-  received: true,
-  debug_raw_cart: session.metadata?.cart || null,
-});
+      received: true,
+      debug: debugInfo,
+    });
+    // ▲ デバッグ用ここまで
   } catch (err) {
     console.error('[FATAL] Webhook処理エラー:', err.message, err.stack);
     return res.status(500).json({ error: 'Webhook処理中にエラーが発生しました' });
