@@ -27,7 +27,6 @@ function getRawBody(req) {
 }
 
 module.exports = async (req, res) => {
-  return res.status(200).json({ MARKER: 'THIS_IS_THE_NEW_CODE_12345' });
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method Not Allowed' });
