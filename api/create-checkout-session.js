@@ -125,7 +125,7 @@ module.exports = async (req, res) => {
               amount: 500,
               currency: 'jpy',
             },
-            display_name: 'テスト目印99999',
+            display_name: '全国一律配送',
           },
         },
       ],
