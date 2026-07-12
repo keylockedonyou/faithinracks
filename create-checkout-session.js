@@ -13,6 +13,7 @@ const Stripe = require('stripe');
 const { neon } = require('@neondatabase/serverless');
 
 module.exports = async (req, res) => {
+  return res.status(200).json({ MARKER_CCS: 'ABC999' });
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method Not Allowed' });
