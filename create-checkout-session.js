@@ -124,7 +124,7 @@ const session = await stripe.checkout.sessions.create({
               amount: 500,
               currency: 'jpy',
             },
-            display_name: '全国一律配送',
+            display_name: 'テスト目印99999',
           },
         },
       ],
