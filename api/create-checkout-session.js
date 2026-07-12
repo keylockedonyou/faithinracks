@@ -110,6 +110,18 @@ module.exports = async (req, res) => {
       process.env.PUBLIC_BASE_URL ||
       (req.headers.origin ? req.headers.origin : `https://${req.headers.host}`);
 
+    // --- 送料の計算(商品合計が15,000円以上なら送料無料) ---
+    const FREE_SHIPPING_THRESHOLD = 15000; // 円。この金額以上で送料無料
+    const BASE_SHIPPING_FEE = 500; // 円。通常時の送料
+
+    const merchandiseSubtotal = line_items.reduce(
+      (sum, li) => sum + li.price_data.unit_amount * li.quantity,
+      0
+    );
+    const shippingFee = merchandiseSubtotal >= FREE_SHIPPING_THRESHOLD ? 0 : BASE_SHIPPING_FEE;
+    const shippingLabel =
+      shippingFee === 0 ? `送料無料(¥${FREE_SHIPPING_THRESHOLD.toLocaleString()}以上)` : '全国一律配送';
+
     const sessionParams = {
       mode: 'payment',
       payment_method_types: ['card'],
@@ -123,10 +135,10 @@ module.exports = async (req, res) => {
           shipping_rate_data: {
             type: 'fixed_amount',
             fixed_amount: {
-              amount: 500,
+              amount: shippingFee,
               currency: 'jpy',
             },
-            display_name: '全国一律配送',
+            display_name: shippingLabel,
           },
         },
       ],
