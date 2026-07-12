@@ -139,12 +139,6 @@ module.exports = async (req, res) => {
       cancel_url: `${origin}/cancel`,
     };
 
-    // ▼ デバッグ用(確認できたら削除): 実際にStripeへ送る直前のパラメータをそのまま返す
-    if (req.headers['x-debug-shipping'] === '1') {
-      return res.status(200).json({ debug: true, sessionParams });
-    }
-    // ▲ デバッグ用ここまで
-
     const session = await stripe.checkout.sessions.create(sessionParams);
 
     return res.status(200).json({ url: session.url });
