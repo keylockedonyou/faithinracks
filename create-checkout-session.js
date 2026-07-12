@@ -108,7 +108,7 @@ module.exports = async (req, res) => {
       process.env.PUBLIC_BASE_URL ||
       (req.headers.origin ? req.headers.origin : `https://${req.headers.host}`);
 
-    const session = await stripe.checkout.sessions.create({
+const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
       line_items,
@@ -116,6 +116,18 @@ module.exports = async (req, res) => {
       shipping_address_collection: {
         allowed_countries: ['JP'],
       },
+      shipping_options: [
+        {
+          shipping_rate_data: {
+            type: 'fixed_amount',
+            fixed_amount: {
+              amount: 500,
+              currency: 'jpy',
+            },
+            display_name: '全国一律配送',
+          },
+        },
+      ],
       phone_number_collection: {
         enabled: true,
       },
