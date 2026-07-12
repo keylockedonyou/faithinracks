@@ -2,7 +2,7 @@
 //
 // Stripe Checkout Session をサーバー側で作成するエンドポイント。
 // - Stripe Secret Key は環境変数からのみ読み込み、フロントには絶対に渡さない。
-// - 商品名・価格は products テーブル、在庫は「商品×サイズ」ごとに
+// - 商品名・価格・画像は products テーブル、在庫は「商品×サイズ」ごとに
 //   product_variants テーブルから取得する(改ざん対策・サイズ別在庫管理)。
 // - サイズ別在庫が足りない場合、Checkout Session を作らずエラーを返す。
 // - 実際に在庫を減らすのは決済完了(webhook.js)のタイミング。
@@ -36,14 +36,14 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'カートが空です。' });
     }
 
-    // 商品情報(名前・価格)をまとめて取得
+    // 商品情報(名前・価格・画像)をまとめて取得
     const ids = items.map((item) => Number(item.id)).filter((id) => Number.isInteger(id));
     if (ids.length === 0) {
       return res.status(400).json({ error: 'カートの内容が不正です。' });
     }
 
     const products = await sql`
-      SELECT id, name, price, is_active
+      SELECT id, name, price, is_active, image_url
       FROM products
       WHERE id = ANY(${ids})
     `;
@@ -89,6 +89,8 @@ module.exports = async (req, res) => {
           product_data: {
             name: product.name,
             description: `Size: ${size}`,
+            // 商品画像(image_urlが設定されている場合のみ、Stripeの決済画面に表示される)
+            ...(product.image_url ? { images: [product.image_url] } : {}),
           },
           unit_amount: product.price,
         },
@@ -108,7 +110,6 @@ module.exports = async (req, res) => {
       process.env.PUBLIC_BASE_URL ||
       (req.headers.origin ? req.headers.origin : `https://${req.headers.host}`);
 
-    // ここで実際にStripeへ渡すパラメータを、一度変数に入れてから使う
     const sessionParams = {
       mode: 'payment',
       payment_method_types: ['card'],
@@ -149,4 +150,3 @@ module.exports = async (req, res) => {
     });
   }
 };
-
