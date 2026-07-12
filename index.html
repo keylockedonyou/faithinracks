@@ -730,9 +730,9 @@ select option{color:var(--black)}
     <div class="cart-empty" id="cart-empty">Your cart is empty</div>
     <div class="cart-items" id="cart-items"></div>
     <div class="cart-sum" id="cart-sum" style="display:none">
-      <div class="sum-row"><span class="sum-lbl">Subtotal</span><span class="sum-val" id="cart-sub">¥0</span></div>
-      <div class="sum-row"><span class="sum-lbl">Shipping</span><span class="sum-val" style="font-size:11px;color:var(--g3)">Calculated at checkout</span></div>
-      <div class="sum-row sum-total"><span class="sum-lbl">Total</span><span class="sum-val" id="cart-total">¥0</span></div>
+      <div class="sum-row"><span class="sum-lbl">Subtotal</span><span class="sum-val" id="cart-sub">¥500</span></div>
+      <div class="sum-row"><span class="sum-lbl">Shipping</span><span class="sum-val" style="font-size:11px;color:var(--g3)">送料は決済画面で表示されます</span></div>
+      <div class="sum-row sum-total"><span class="sum-lbl">Total</span><span class="sum-val" id="cart-total">¥500</span></div>
       <div class="cart-note">Tax included · Shipping calculated at checkout</div>
       <button class="checkout-btn" id="cart-checkout-btn">Proceed to Checkout</button>
     </div>
@@ -1088,11 +1088,11 @@ select option{color:var(--black)}
 // DATA
 // ══════════════════════════════════════════
 const PRODS = [
- {id:1,cat:'tops',name:'Hear No Evil',price:9900,desc:'Oversized cropped tee with a hand-illustrated graphic print. Boxy drop-shoulder fit in heavyweight cotton. Made in Japan.',img:'image/IMG_0962.jpeg',images:['image/IMG_0962.jpeg','image/DSC04816.JPG','image/DSC04836.JPG']},
+  {id:1,cat:'tops',name:'Hear No Evil',price:9900,desc:'Oversized cropped tee with a hand-illustrated graphic print. Boxy drop-shoulder fit in heavyweight cotton. Made in Japan.',img:'image/IMG_0962.jpeg',images:['image/IMG_0962.jpeg','image/DSC04816.JPG','image/DSC04836.JPG']},
   {id:2,cat:'tops',name:'Speak No Evil',price:9900,desc:'Oversized cropped tee with a hand-illustrated graphic print. Boxy drop-shoulder fit in heavyweight cotton. Made in Japan.',img:'image/IMG_0958.jpeg',images:['image/IMG_0958.jpeg','image/DSC04836.JPG','images/product-2c.jpg']},
   {id:3,cat:'tops',name:'See No Evil',price:9900,desc:'Oversized cropped tee with a hand-illustrated graphic print. Boxy drop-shoulder fit in heavyweight cotton. Made in Japan.',img:'image/IMG_0944.jpeg',images:['image/IMG_0944.jpeg','image/DSC04856.JPG','images/product-3c.jpg']},
 ];
-  
+
 let cart=[], wishlist=[], currentPid=null, prevPage='page-top';
 const USERS={};
 let currentUser=null;
@@ -1323,7 +1323,7 @@ function renderCart(){
 }
 
 // ── CHECKOUT ──
-const FREE_SHIP_THRESHOLD=15000, SHIP_FEE=600;
+const FREE_SHIP_THRESHOLD=15000, SHIP_FEE=500;
 const PROMO_CODES={'WELCOME10':0.10,'VEIL15':0.15};
 let coPromo=null, coPayMethod='card', lastOrder=null;
 
