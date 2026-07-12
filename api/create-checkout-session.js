@@ -74,18 +74,6 @@ module.exports = async (req, res) => {
       `;
       const variant = variantRows[0];
 
-// ▼▼▼ デバッグ用(確認できたら削除) ▼▼▼
-if (req.headers['x-debug'] === '1') {
-  return res.status(200).json({
-    debug: true,
-    product_id: product.id,
-    size,
-    qty,
-    variant: variant || null,
-  });
-}
-// ▲▲▲ デバッグ用ここまで ▲▲▲
-
       if (!variant) {
         return res.status(400).json({ error: `「${product.name}」に${size}サイズはありません。` });
       }
@@ -120,7 +108,8 @@ if (req.headers['x-debug'] === '1') {
       process.env.PUBLIC_BASE_URL ||
       (req.headers.origin ? req.headers.origin : `https://${req.headers.host}`);
 
-    const session = await stripe.checkout.sessions.create({
+    // ここで実際にStripeへ渡すパラメータを、一度変数に入れてから使う
+    const sessionParams = {
       mode: 'payment',
       payment_method_types: ['card'],
       line_items,
@@ -128,6 +117,18 @@ if (req.headers['x-debug'] === '1') {
       shipping_address_collection: {
         allowed_countries: ['JP'],
       },
+      shipping_options: [
+        {
+          shipping_rate_data: {
+            type: 'fixed_amount',
+            fixed_amount: {
+              amount: 500,
+              currency: 'jpy',
+            },
+            display_name: 'テスト目印99999',
+          },
+        },
+      ],
       phone_number_collection: {
         enabled: true,
       },
@@ -136,7 +137,15 @@ if (req.headers['x-debug'] === '1') {
       },
       success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/cancel`,
-    });
+    };
+
+    // ▼ デバッグ用(確認できたら削除): 実際にStripeへ送る直前のパラメータをそのまま返す
+    if (req.headers['x-debug-shipping'] === '1') {
+      return res.status(200).json({ debug: true, sessionParams });
+    }
+    // ▲ デバッグ用ここまで
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     return res.status(200).json({ url: session.url });
   } catch (err) {
@@ -146,3 +155,4 @@ if (req.headers['x-debug'] === '1') {
     });
   }
 };
+
