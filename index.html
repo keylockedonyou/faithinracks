@@ -262,8 +262,8 @@ body{background:var(--white);font-family:var(--fb);font-weight:300;min-height:10
 .ddivider{width:28px;height:.5px;background:var(--g2);margin-bottom:22px}
 .ddesc{font-size:12px;font-weight:300;letter-spacing:.05em;color:var(--g4);line-height:2;margin-bottom:26px}
 .dprice{font-size:16px;font-weight:400;letter-spacing:.15em;color:var(--black)}
-.detail-center{display:flex;align-items:stretch}
-.detail-img{width:100%;background:var(--g1);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;box-shadow:4px 0 40px rgba(0,0,0,.05),-4px 0 40px rgba(0,0,0,.03)}
+.detail-center{display:flex;flex-direction:column;align-items:stretch}
+.detail-img{width:100%;flex:1 1 auto;min-height:0;background:var(--g1);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;box-shadow:4px 0 40px rgba(0,0,0,.05),-4px 0 40px rgba(0,0,0,.03)}
 .detail-nav-btn{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--gbg);border:.5px solid var(--gbr);backdrop-filter:blur(12px);box-shadow:var(--gs);cursor:pointer;transition:box-shadow var(--tr),opacity .25s;z-index:20;opacity:0}
 .detail-img:hover .detail-nav-btn{opacity:1}
 .detail-nav-btn:hover{box-shadow:var(--gsh)}
@@ -273,7 +273,7 @@ body{background:var(--white);font-family:var(--fb);font-weight:300;min-height:10
 .detail-nav-btn.hidden{display:none}
 .detail-img-count{position:absolute;bottom:14px;right:16px;font-size:9px;letter-spacing:.15em;color:var(--white);background:rgba(0,0,0,.4);padding:4px 9px;border-radius:20px;z-index:20}
 @media (max-width:768px){.detail-nav-btn{opacity:1}}
-.detail-thumbs{display:flex;gap:10px;margin-top:14px;justify-content:center;flex-wrap:wrap}
+.detail-thumbs{display:flex;gap:10px;margin-top:14px;justify-content:center;flex-wrap:wrap;flex-shrink:0}
 .detail-thumb{width:56px;height:70px;border-radius:8px;overflow:hidden;cursor:pointer;opacity:.5;border:1.5px solid transparent;transition:opacity .25s,border-color .25s}
 .detail-thumb img{width:100%;height:100%;object-fit:cover;display:block}
 .detail-thumb:hover{opacity:.85}
@@ -1088,9 +1088,9 @@ select option{color:var(--black)}
 // DATA
 // ══════════════════════════════════════════
 const PRODS = [
-  {id:1,cat:'tops',name:'Hear No Evil',price:9900,desc:'Oversized cropped tee with a hand-illustrated graphic print. Boxy drop-shoulder fit in heavyweight cotton. Made in Japan.',img:'image/IMG_0962.jpeg',images:['image/IMG_0962.jpeg','image/DSC04816.JPG','image/DSC04836.JPG']},
-  {id:2,cat:'tops',name:'Speak No Evil',price:9900,desc:'Oversized cropped tee with a hand-illustrated graphic print. Boxy drop-shoulder fit in heavyweight cotton. Made in Japan.',img:'image/IMG_0958.jpeg',images:['image/IMG_0958.jpeg','image/DSC04836.JPG','images/product-2c.jpg']},
-  {id:3,cat:'tops',name:'See No Evil',price:9900,desc:'Oversized cropped tee with a hand-illustrated graphic print. Boxy drop-shoulder fit in heavyweight cotton. Made in Japan.',img:'image/IMG_0944.jpeg',images:['image/IMG_0944.jpeg','image/DSC04856.JPG','images/product-3c.jpg']},
+  {id:1,cat:'tops',name:'Hear No Evil',price:9900,desc:'Oversized cropped tee with a hand-illustrated graphic print. Boxy drop-shoulder fit in heavyweight cotton. Made in Japan.',img:'image/IMG_0962.jpeg',images:['image/IMG_0962.jpeg','image/DSC04816.JPG']},
+  {id:2,cat:'tops',name:'Speak No Evil',price:9900,desc:'Oversized cropped tee with a hand-illustrated graphic print. Boxy drop-shoulder fit in heavyweight cotton. Made in Japan.',img:'image/IMG_0958.jpeg',images:['image/IMG_0958.jpeg','image/DSC04836.JPG']},
+  {id:3,cat:'tops',name:'See No Evil',price:9900,desc:'Oversized cropped tee with a hand-illustrated graphic print. Boxy drop-shoulder fit in heavyweight cotton. Made in Japan.',img:'image/IMG_0944.jpeg',images:['image/IMG_0944.jpeg','image/DSC04856.JPG']},
 ];
 
 let cart=[], wishlist=[], currentPid=null, prevPage='page-top';
