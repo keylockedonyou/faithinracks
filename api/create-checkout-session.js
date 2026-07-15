@@ -130,7 +130,7 @@ module.exports = async (req, res) => {
 
     const sessionParams = {
       mode: 'payment',
-      payment_method_types: ['card', 'konbini', 'paypay'], // konbini, paypay を追加
+      payment_method_types: ['card'], // konbini, paypay を追加
       line_items,
       ...(email ? { customer_email: email } : {}),
       shipping_address_collection: {
