@@ -122,9 +122,15 @@ module.exports = async (req, res) => {
     const shippingLabel =
       shippingFee === 0 ? `送料無料(¥${FREE_SHIPPING_THRESHOLD.toLocaleString()}以上)` : '全国一律配送';
 
+    // konbini決済には ¥120〜¥300,000 の金額制限があるため、
+    // 選択された場合に上限を超えていないか事前にチェックする
+    const grandTotalForKonbiniCheck = merchandiseSubtotal + shippingFee;
+    const KONBINI_MAX_AMOUNT = 300000;
+    const KONBINI_MIN_AMOUNT = 120;
+
     const sessionParams = {
       mode: 'payment',
-      payment_method_types: ['card'],
+      payment_method_types: ['card', 'konbini', 'paypay'], // konbini, paypay を追加
       line_items,
       ...(email ? { customer_email: email } : {}),
       shipping_address_collection: {
@@ -145,12 +151,30 @@ module.exports = async (req, res) => {
       phone_number_collection: {
         enabled: true,
       },
+      // konbini用の追加設定(支払い期限)
+      payment_method_options: {
+        konbini: {
+          expires_after_days: 3, // 3日以内に店頭で支払いがないと自動失効
+        },
+      },
       metadata: {
         cart: JSON.stringify(cartForMetadata),
       },
       success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/cancel`,
     };
+
+    // konbiniの金額制限を超えている場合は、konbiniを選択肢から外す
+    // (card, paypayは制限が別なのでそのまま残す)
+    if (
+      grandTotalForKonbiniCheck < KONBINI_MIN_AMOUNT ||
+      grandTotalForKonbiniCheck > KONBINI_MAX_AMOUNT
+    ) {
+      sessionParams.payment_method_types = sessionParams.payment_method_types.filter(
+        (type) => type !== 'konbini'
+      );
+      delete sessionParams.payment_method_options.konbini;
+    }
 
     const session = await stripe.checkout.sessions.create(sessionParams);
 
