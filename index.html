@@ -9,6 +9,20 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
 
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --black:#111;--white:#fff;
+  --g1:#f7f7f5;--g2:#e8e8e4;--g3:#bbb;--g4:rgba(0,0,0,.25);
+  --gbg:rgba(255,255,255,.52);--gbr:rgba(255,255,255,.88);
+  --gs:0 1px 0 rgba(255,255,255,1) inset,0 -0.5px 0 rgba(0,0,0,.05) inset,0 8px 32px rgba(0,0,0,.08),0 2px 8px rgba(0,0,0,.05);
+  --gsh:0 1px 0 rgba(255,255,255,1) inset,0 20px 60px rgba(0,0,0,.12),0 6px 16px rgba(0,0,0,.08);
+  --r:14px;--rs:10px;
+  --fd:'Bebas Neue',sans-serif;--fb:'Noto Sans JP',sans-serif;
+  --g3:#888;--g4:rgba(0,0,0,.45);
+  --tr:.38s cubic-bezier(.22,1,.36,1);
+}
+body{background:var(--white);font-family:var(--fb);font-weight:300;min-height:100vh;overflow:hidden;color:var(--black)}
+  
 /* ── PAGE SYSTEM ── */
 .page{
   position:fixed;
