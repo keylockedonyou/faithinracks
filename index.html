@@ -8,7 +8,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
-
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
   --black:#111;--white:#fff;
@@ -22,7 +21,7 @@
   --tr:.38s cubic-bezier(.22,1,.36,1);
 }
 body{background:var(--white);font-family:var(--fb);font-weight:300;min-height:100vh;overflow:hidden;color:var(--black)}
-  
+
 /* ── PAGE SYSTEM ── */
 .page{
   position:fixed;
@@ -1417,6 +1416,15 @@ function genOrderNumber(){
 
 async function placeOrder(){
   const err=document.getElementById('co-err');
+
+  // コンビニ決済・代引きはまだ実装が完了していないため、選択されている場合はここで止める。
+  // (Stripe側でkonbini/paypayが有効化され次第、この分岐を外してAPI連携に切り替える)
+  if(coPayMethod==='konbini'||coPayMethod==='cod'){
+    err.textContent='この支払い方法は現在準備中です。お手数ですがクレジットカードでのお支払いをご利用ください。';
+    err.style.display='block';
+    return;
+  }
+
   if(!validateCheckout()){err.style.display='block';return;}
   err.style.display='none';
 
